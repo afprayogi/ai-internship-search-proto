@@ -1,10 +1,10 @@
-# Job Application Assistant for [YOUR_NAME]
+# Job Application Assistant for Ahmad Fauzan Prayogi
 
 <!-- SETUP: This file is populated by running /setup -->
 <!-- After running /setup, all [PLACEHOLDER] tokens will be replaced with your actual information -->
 
 ## Role
-This repo is a job application workspace. Claude acts as a career advisor and application assistant for [YOUR_NAME], helping with:
+This repo is a job application workspace. Claude acts as a career advisor and application assistant for Ahmad Fauzan Prayogi, helping with:
 1. **Job fit evaluation** - Assess job postings against your profile (skills, experience, behavioral traits)
 2. **CV tailoring** - Adapt existing CV templates (LaTeX/moderncv) to target specific roles
 3. **Cover letter writing** - Draft targeted cover letters using existing templates (LaTeX)
@@ -16,76 +16,86 @@ This repo is a job application workspace. Claude acts as a career advisor and ap
 <!-- This section is auto-populated by /setup. You can also fill it in manually. -->
 
 ### Identity
-- **Name:** [YOUR_NAME]
-- **Location:** [YOUR_CITY], [YOUR_COUNTRY] ([YOUR_COMMUTE_CONSTRAINTS])
+- **Name:** Ahmad Fauzan Prayogi
+- **Location:** Jombang, Jawa Timur, Indonesia (currently based in Surabaya for studies at ITS; open to internships anywhere in Indonesia — onsite, hybrid, or remote)
 - **Languages:**
   | Language | Level |
   |----------|-------|
-  | [LANGUAGE] | [LEVEL] |
+  | Indonesian | Native |
+  | English | Professional working proficiency *(assumed from CV/coursework being in English — confirm your actual level and correct if needed)* |
   <!-- Every language you work in professionally, with your level (CEFR, "native," "professional
   working proficiency," whatever your CV/LinkedIn use - no need to force it into one scale). An
   undeclared language is a hard deal-breaker if a posting requires it; a declared language at a
   lower level than a posting wants is flagged for your own judgment, not auto-rejected. See
   04-job-evaluation.md's Language Gate. -->
-- **CV language:** [YOUR_CV_LANGUAGE] <!-- English unless your market expects otherwise; /setup asks -->
+- **CV language:** English <!-- English unless your market expects otherwise; /setup asks -->
 
-- **Status:** [YOUR_EMPLOYMENT_STATUS]
-- **LinkedIn headline:** "[YOUR_LINKEDIN_HEADLINE]"
+- **Status:** Undergraduate student, 3rd year Electrical Automation Engineering (ITS), GPA 3.32/4.00 — actively seeking an **internship (magang)**, not a full-time role
+- **LinkedIn headline:** "Electrical Automation Engineering Student (ITS) | AI Development, AIoT & MLOps | Bridging Hardware-Software Gaps"
 
 ### Education
 <!-- List your degrees, most recent first -->
-- **[DEGREE_LEVEL] in [FIELD]** ([YEAR_START]-[YEAR_END]) - [INSTITUTION]
-  - Thesis: "[THESIS_TITLE]"
-  - Topics: [KEY_TOPICS]
+- **BSc in Electrical Automation Engineering** (Aug 2023 - expected 2027, in progress) - Institut Teknologi Sepuluh Nopember (ITS), Surabaya, Indonesia
+  - GPA: 3.32/4.00 (3rd year)
+  - Topics: Algorithm & Programming, Microprocessor & Embedded Systems, Digital Image Processing, Maintenance & Repair Technique, Intelligent Vehicle Systems, Industrial Optimization, Industrial Robotics, Intelligent Technology Engineering
 
 ### Professional Experience
 <!-- List your roles, most recent first -->
-- **[JOB_TITLE]** ([START_DATE] - [END_DATE]) - **[COMPANY]** ([LOCATION])
-  - [KEY_RESPONSIBILITY_1]
-  - [KEY_RESPONSIBILITY_2]
-  - [KEY_ACHIEVEMENT]
+- **Maintenance Industrial Quality Intern** (Feb 2026 - Aug 2026) - **PT. Evoluzione Tyres (J.V. Pirelli - Astra Otoparts)** (Subang, Indonesia)
+  - Developed a fullstack Next.js application featuring a real-time KPI machine-monitoring dashboard and a maintenance staff portal (report exporting, approval workflows, role-based permissions, digital signatures, dynamic form builder)
+  - Integrated SQL Server and server-side cron jobs to manage database storage and optimize performance, ensuring stable 24/7 real-time monitoring
+- **AI/IoT Engineer (project-based)** (Mar 2025 - Dec 2025) - **Pusat Studi Mitigasi Kebencanaan dan Perubahan Iklim, ITS** (Surabaya, Indonesia)
+  - Built an AI model (INSAMO) predicting water levels 30 days ahead from 148 days of historical sensor data, MAE of 5cm; designed an urban flood simulation model for Surabaya
+  - Designed a low-cost landslide early-warning system using Fuzzy Logic on ESP32, and a flood-warning system using LSTM on ESP32, each under IDR 1,000,000 total budget
+  - Built a full-stack sensor monitoring web platform (PHP/Bootstrap) handling 100 simultaneous heterogeneous sensor inputs for real-time flood/seismic/landslide visualization
+- **Electrical System Engineer (project-based)** (Sep 2025 - Jan 2026) - **National Ship Design and Engineer Center, ITS** (Surabaya, Indonesia)
+  - Designed a remote propulsion/maneuvering control system for an autonomous trash-skimmer ship, enabling precise thruster regulation and autonomous navigation
+  - Built a solar-integrated electrical power system supporting 3 hours of continuous vessel operation
 
 ### Technical Skills
-- **Primary:** [YOUR_PRIMARY_SKILLS]
-- **Secondary:** [YOUR_SECONDARY_SKILLS]
-- **Domain:** [YOUR_DOMAIN_EXPERTISE]
-- **Software:** [YOUR_TOOLS_AND_SOFTWARE]
+- **Primary:** Python, AI/computer vision (PyTorch, TensorFlow, Scikit-learn, OpenCV, YOLOv8, ONNX), embedded systems (ESP32, Arduino/ATmega, STM32, Raspberry Pi)
+- **Secondary:** JavaScript, Next.js, Flask, Flutter, PHP, SQL, C/C++, Dart, Node-RED
+- **Domain:** AIoT, MLOps, industrial automation, disaster early-warning/monitoring systems, IoT sensor networks, communication protocols (MQTT, REST/HTTPS APIs, MODBUS RTU/TCP, OPC-UA)
+- **Software:** VS Code, Node-RED, Eagle/Fusion, EasyEDA, KiCAD, Proteus, Multisim, MATLAB
 
 ### Certifications
 <!-- List relevant certifications with dates -->
-- **[CERTIFICATION_NAME]** - [HOURS]h - completed [DATE]
+- None listed yet
 
 ### Publications
 <!-- List peer-reviewed publications, if any -->
-- [AUTHOR_LIST] ([YEAR]). [TITLE]. [JOURNAL].
+- None yet
 
 ### Awards
 <!-- List relevant awards, hackathons, competitions -->
-- [AWARD_NAME] - [EVENT] ([YEAR])
+- 2nd Place, Youth Development Climate Tech 2026 (SL2 & Meta) - international competition vs. teams from Indonesia, Singapore, and India (2026)
+- Top 5 Finalist, Early Startup Business PERTAMUDA (PERTAMINA) - "PANZO" solar + piezoelectric energy solution, out of 300+ teams (2024)
+- 2nd Place, FERC - Kompetisi Kapal Indonesia (Puspresnas) - Fuel Engine Remote Control ship design, national competition (2024)
 
 ### Behavioral Profile
 <!-- Your behavioral assessment results (PI, DISC, Myers-Briggs, or self-assessment) -->
-- **[TRAIT_1]** - [DESCRIPTION]
-- **[TRAIT_2]** - [DESCRIPTION]
-- **Strengths:** [YOUR_STRENGTHS]
-- **Growth areas:** [YOUR_GROWTH_AREAS]
-- **Thrives in:** [YOUR_IDEAL_ENVIRONMENT]
+*[Inferred from CV pattern — no formal assessment provided; review and refine as needed]*
+- **Hands-on builder** - Ships working hardware+software prototypes repeatedly under tight timelines (6 self-driven IoT/AI builds in under 18 months)
+- **Cross-functional leader** - Leads a 13-member student organization (Head Manager, BSO SENERGY DTEO) and has mentored 60+ students in technical workshops
+- **Strengths:** Rapid prototyping, bridging hardware/software gaps, thriving under competition deadlines, self-directed learning across a wide tool stack
+- **Growth areas:** Limited exposure to production-scale software engineering practices (testing, CI/CD, code review) — frame as eager to adopt professional engineering discipline in an industry setting
+- **Thrives in:** Fast-paced, hands-on, interdisciplinary environments with a concrete technical problem to solve
 
 ### What Excites You
 <!-- What motivates you professionally -->
-- [PASSION_1]
-- [PASSION_2]
+- Applying AI/IoT to real-world problems, especially disaster mitigation, sustainability, and industrial automation
+- Bridging the hardware-software gap - building complete systems from embedded sensor to cloud dashboard
 
 ### Target Sectors
 <!-- Industries and companies you're targeting -->
-- [SECTOR_1]: [EXAMPLE_COMPANIES]
-- [SECTOR_2]: [EXAMPLE_COMPANIES]
+- AI/IoT engineering: startups and industry teams building embedded AI, computer vision, or sensor-network products
+- Industrial automation & manufacturing: e.g. Astra Group companies (per current internship), automotive/manufacturing plants adopting IoT monitoring
+- Climate-tech / disaster-tech: organizations building early-warning or environmental monitoring systems
 
 ### Deal-breakers
 <!-- Hard constraints on job search. Language requirements are handled separately and
 automatically from your Languages table above - don't duplicate them here. -->
-- [DEALBREAKER_1]
-- [DEALBREAKER_2]
+- None specified yet - update as you refine your search
 
 ## Repo Structure
 - `cv/` - LaTeX CV variants (moderncv template, banking style)

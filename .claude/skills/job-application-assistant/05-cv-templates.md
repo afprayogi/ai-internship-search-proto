@@ -116,11 +116,11 @@ When the role sits outside your home domain, **lead with the domain-transfer arg
 **Create 2-3 profile statement templates for your main role types:**
 
 <!-- SETUP: These are populated based on your background -->
-**For [YOUR_PRIMARY_ROLE_TYPE] roles:**
-> [YOUR_PROFILE_STATEMENT_TEMPLATE_1]
+**For AI/IoT & Embedded Systems Engineering internships:**
+> Third-year Electrical Automation Engineering student (ITS, GPA 3.32/4.00) specializing in AIoT and MLOps. Built six end-to-end AI/IoT systems in under 18 months, from an Android PPE-detection app (YOLOv8n, mAP50 0.801) to disaster early-warning systems combining ESP32 hardware with Fuzzy Logic and LSTM models. Comfortable across the full stack: embedded firmware, model training/deployment, and the dashboards that surface the results. Seeking an internship to bring this hands-on build experience into a professional engineering team.
 
-**For [YOUR_SECONDARY_ROLE_TYPE] roles:**
-> [YOUR_PROFILE_STATEMENT_TEMPLATE_2]
+**For Fullstack/Software Engineering internships:**
+> Third-year Electrical Automation Engineering student (ITS) with hands-on fullstack experience from an industrial internship at PT. Evoluzione Tyres (J.V. Pirelli - Astra Otoparts), where I built a Next.js KPI monitoring dashboard and maintenance portal with role-based permissions and SQL Server integration. Background in embedded systems and applied AI adds a systems-level perspective uncommon in typical web development candidates. Seeking an internship to deepen production-grade software engineering practices.
 
 Statements labeled *[Used for: <company>_<role>]* were extracted from archived application drafts by `/setup` Path A. They are **phrasing references, never fact sources**: when drafting from one, every factual claim still comes from `01-candidate-profile.md` - a past tailored draft does not vouch for its own accuracy.
 

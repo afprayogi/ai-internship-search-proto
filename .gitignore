@@ -2,6 +2,9 @@
 node_modules/
 bun.lock
 
+# Local secrets/config (WhatsApp gateway credentials, phone number, etc.)
+.env
+
 # Python
 __pycache__/
 *.pyc
@@ -26,6 +29,11 @@ salary_data.json
 **/job_scraper/seen_jobs.json
 **/job_scraper/notion_sync.json
 **/job_scraper/*.md
+**/job_scraper/offline_seen.json
+**/job_scraper/offline_jobs_log.csv
+**/job_scraper/offline_jobs_log.legacy.csv
+**/job_scraper/offline_scraper.log
+**/job_scraper/whatsapp_log.csv
 *_BehavioralReport.pdf
 linkedin_Profile.pdf
 

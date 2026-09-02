@@ -60,9 +60,9 @@ How well do the required/preferred skills align with the candidate's capabilitie
 | 40-59 | Partial match, significant upskilling needed |
 | 0-39 | Fundamental mismatch |
 
-**Strong match areas:** [YOUR_PRIMARY_SKILLS]
-**Moderate match areas:** [YOUR_SECONDARY_SKILLS]
-**Weak match areas:** [SKILLS_YOU_LACK]
+**Strong match areas:** Python, embedded systems (ESP32/Arduino/STM32/Raspberry Pi), AI/computer vision (PyTorch, TensorFlow, OpenCV, YOLOv8, ONNX), IoT protocols (MQTT, REST, MODBUS)
+**Moderate match areas:** Fullstack web (Next.js, Flask, Flutter), PHP, SQL, MLOps/deployment (TFLite conversion), hardware design tools (KiCAD, EasyEDA, Proteus)
+**Weak match areas:** Production-scale software engineering (testing, CI/CD, code review), cloud infrastructure (AWS/GCP/Azure), data engineering at scale, formal project management
 
 ### 2. Experience Match (0-100)
 Does work history align with what they're looking for?
@@ -74,9 +74,9 @@ Does work history align with what they're looking for?
 | 40-59 | Adjacent experience, would need to make the case |
 | 0-39 | Unrelated experience |
 
-**Strong:** [YOUR_DIRECT_EXPERIENCE_DOMAINS]
-**Moderate:** [YOUR_ADJACENT_EXPERIENCE]
-**Entry-level:** [ROLES_WITH_LIMITED_EXPERIENCE]
+**Strong:** AIoT / embedded AI prototyping (sensor-to-model-to-app pipelines), disaster/environmental monitoring systems, industrial monitoring dashboards (as intern)
+**Moderate:** Fullstack web development, industrial quality/maintenance operations
+**Entry-level:** Candidate is a 3rd-year student seeking an **internship**, not a full-time role - score "Experience Match" against internship-level expectations (coursework + project portfolio + one industrial internship), not against a professional engineer's track record. A posting explicitly requiring "1+ years professional experience" or "final-year/graduate only" should be flagged, not auto-failed - many Indonesian internship postings state this loosely.
 
 ### 3. Behavioral/Culture Fit (0-100)
 Does the role and company culture match the behavioral profile?
@@ -107,19 +107,19 @@ Does this role advance career goals and contain tasks that energize?
 | 0-39 | Dead end or backwards step |
 
 **Career goals:**
-- [YOUR_CAREER_GOAL_1]
-- [YOUR_CAREER_GOAL_2]
-- [YOUR_CAREER_GOAL_3]
+- Land a technical internship (magang) that gives real ownership on an AI, IoT, or embedded systems product - not a purely observational internship
+- Build professional-grade software engineering habits (testing, code review, structured collaboration) alongside the hands-on prototyping skills already strong
+- Grow toward a full-time AI/IoT or embedded engineering role after graduation (~2027), ideally at a company met and evaluated during the internship
 
 **Motivation filter:** Evaluate not just whether you *can* do the tasks, but whether the tasks will *energize* you. Consider:
-- Tasks that energize: [YOUR_ENERGIZING_TASKS]
-- Tasks that drain: [YOUR_DRAINING_TASKS]
-- Non-task factors: leadership style, department culture, company values, degree of autonomy
+- Tasks that energize: building end-to-end systems that combine hardware and software (sensor → model/logic → dashboard or app), applied AI/computer vision, working on problems with real-world stakes (safety, disaster response, industrial reliability)
+- Tasks that drain: purely theoretical/desk research with no build component, roles fully siloed into either hardware-only or software-only with no integration work
+- Non-task factors: mentorship availability (values learning from senior engineers), degree of autonomy on the build, team size (has thrived in small, fast-moving teams so far)
 
 **Life situation alignment:** Consider personal constraints:
-- **Security**: [YOUR_FINANCIAL_SITUATION_CONTEXT]
-- **Flexibility**: [YOUR_SCHEDULE_CONSTRAINTS]
-- **Professional development**: [YOUR_GROWTH_PRIORITIES]
+- **Security**: Full-time student in final years of study; internship income is a bonus, not the primary financial need - flexibility on compensation for a strong learning opportunity is acceptable, but note if a posting is unpaid
+- **Flexibility**: Must be compatible with ongoing coursework at ITS (Surabaya) unless the internship is explicitly a semester-off / full-time break placement - flag posting hours/schedule expectations rather than assuming
+- **Professional development**: Primary goal of this search is skill growth and portfolio-building for post-graduation full-time roles, not just resume-padding
 
 ### 6. Salary Benchmark (Optional)
 
