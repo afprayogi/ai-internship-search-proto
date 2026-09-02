@@ -6,6 +6,15 @@
 
 *A Claude Code-powered internship search assistant, extended with an offline scraper and WhatsApp notifications.*
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/runtime-Bun-000000?logo=bun&logoColor=white" alt="Runtime: Bun">
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/WhatsApp%20gateway-Docker-2496ED?logo=docker&logoColor=white" alt="WhatsApp gateway: Docker">
+  <img src="https://img.shields.io/badge/built%20with-Claude%20Code-D97757?logo=anthropic&logoColor=white" alt="Built with Claude Code">
+  <img src="https://img.shields.io/badge/focus-Indonesia%20internships-red" alt="Focus: Indonesia internships">
+</p>
+
 > Forked from [MadsLorentzen/ai-job-search](https://github.com/MadsLorentzen/ai-job-search), an independent open-source project not affiliated with Anthropic. Anthropic and Claude Code are referenced only to describe the toolchain this workflow uses.
 
 ## What this is
