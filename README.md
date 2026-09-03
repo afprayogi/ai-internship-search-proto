@@ -43,10 +43,19 @@ flowchart TD
         wa -->|"Docker container\nlocalhost:3000"| phone(["Your phone / group"])
     end
 
+    subgraph dash["Dashboard (tools/open_dashboard.bat, browser)"]
+        dbat["open_dashboard.bat"] --> dserver["tools/dashboard_server.mjs\n(localhost:4870)"]
+        dserver -->|"serves + reads/writes"| dhtml["tools/dashboard.html"]
+        dhtml -->|"Run scraper now"| scraper
+        dhtml -->|"+ Track"| tracker[("job_search_tracker.csv")]
+    end
+
     csv -.->|"pick a URL, paste into chat"| apply
+    csv -->|"shown in Scraped postings tab"| dhtml
+    tracker -.->|"already-applied filter"| scraper
 ```
 
-Both layers read and write independent state on purpose: the offline scraper's dedup store (`job_scraper/offline_seen.json`) never touches the Claude-driven `/scrape` state (`job_scraper/seen_jobs.json`), so running one never corrupts the other.
+The two automated layers (offline scraper, dashboard) read and write independent state from the Claude-driven `/scrape` on purpose: the offline scraper's dedup store (`job_scraper/offline_seen.json`) never touches `/scrape`'s own state (`job_scraper/seen_jobs.json`), so running one never corrupts the other. The dashboard sits on top of the offline layer rather than replacing it - it's a browser-based control panel for the exact same `tools/offline_scraper.mjs` and `job_search_tracker.csv` the `.bat` files and Claude-driven skills already use.
 
 ## Requirements
 
@@ -54,7 +63,7 @@ Both layers read and write independent state on purpose: the offline scraper's d
 |---|---|---|
 | [Claude Code](https://claude.com/claude-code) | `/setup`, `/scrape`, `/apply`, `/interview`, etc. | The only component that needs an active Claude session / usage. |
 | Python 3.10+ | `salary_lookup.py`, framework tooling | |
-| [Bun](https://bun.sh) | LinkedIn search CLI, `tools/offline_scraper.mjs` | Install: `winget install Oven-sh.Bun` |
+| [Bun](https://bun.sh) | LinkedIn search CLI, `tools/offline_scraper.mjs`, `tools/dashboard_server.mjs` | Install: `winget install Oven-sh.Bun` |
 | LaTeX distribution (`lualatex` + `xelatex`) | Compiling the CV and cover letter | [MiKTeX](https://miktex.org/) on Windows; TeX Live/MacTeX/TinyTeX elsewhere. CV uses `lualatex`, cover letter uses `xelatex` (needs `fontspec`). |
 | Optional: `pdftotext` ([poppler](https://poppler.freedesktop.org/)) | ATS text-layer check on the compiled CV | Degrades gracefully to a visual check if missing. |
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Running the WhatsApp notification gateway | Only needed if you want WhatsApp alerts from the offline scraper — everything else works without it. |
@@ -96,7 +105,27 @@ Searches LinkedIn + JobStreet for every keyword in `tools/offline_scraper.mjs` (
 
 Every send attempt (success or failure) is permanently logged to `job_scraper/whatsapp_log.csv` — proof of what was sent, when, and to whom. Set `WA_DRY_RUN=true` in `.env` to build and log messages without ever actually sending them, useful while testing configuration changes.
 
-### 4. Privacy pre-commit check (recommended)
+### 4. Job tracker dashboard (browser UI for the whole pipeline)
+
+Double-click:
+
+```
+tools\open_dashboard.bat
+```
+
+Starts a tiny localhost-only server (`tools/dashboard_server.mjs`, needs Bun) and opens `http://localhost:4870/` — a single-page dashboard covering both halves of the pipeline: **finding** internships and **tracking** applications.
+
+**Scraped postings** (top of the page):
+- Shows every listing in `job_scraper/offline_jobs_log.csv` — the exact same file `run_offline_scraper.bat` writes to — with search + portal/location-tier filters.
+- **▶ Run scraper now** runs `tools/offline_scraper.mjs` directly from the browser and streams its console output live (the same thing you'd see running the `.bat` file, just inside the page). Only one run at a time; a second click while one is running is a no-op, not a duplicate run.
+- **⚙️ Search settings** edits the keyword list, LinkedIn/JobStreet page limits, and ideal/acceptable locations from a form instead of hand-editing `offline_scraper.mjs`. Saved to `job_scraper/scraper_config.json`, which both the dashboard and `run_offline_scraper.bat` read — editing it in one place changes both.
+- **+ Track** on any posting opens the add-application form prefilled (company, role, source URL, channel) so you review before it's saved — nothing gets added to your tracker without a confirm click.
+
+**My applications** (stat cards, charts, table): add/edit/delete applications by hand, same as before. Every change is saved **immediately to the browser's local storage** first, so nothing is lost if the page or server closes mid-edit; with the server running, each change is *also* written straight to `job_search_tracker.csv` on disk, so `/rank`, `/outcome`, and the scraper's own already-applied filter all see the same data without a manual export step. **Export CSV** / **Import CSV** still work for moving data to/from another machine or merging in an existing tracker (matches by company+role, so re-importing never duplicates rows).
+
+No Bun, or opened `tools/dashboard.html` directly as a file instead of through the `.bat`? The page detects that (a banner at the top says so) and falls back to tracker-only mode against local storage — scraping and disk sync are simply unavailable until the server's running.
+
+### 5. Privacy pre-commit check (recommended)
 
 This repo's personal contact data (phone, email) once got committed and pushed to a public GitHub repo by accident. To make sure that never happens again, there's a Git hook that scans every commit for your real contact info before it's allowed through:
 
@@ -128,12 +157,17 @@ jobsearch/
 ├── tools/
 │   ├── offline_scraper.mjs            # Standalone LinkedIn + JobStreet scraper (no Claude)
 │   ├── run_offline_scraper.bat        # Double-click entry point for the offline scraper
+│   ├── scraper_config_defaults.mjs    # Default search keywords/locations/page limits
+│   ├── dashboard.html                 # Dashboard UI - scraped postings + application tracker
+│   ├── dashboard_server.mjs           # Localhost server behind the dashboard (serves it, runs the scraper, reads/writes CSVs)
+│   ├── open_dashboard.bat             # Double-click entry point for the dashboard
 │   ├── start_whatsapp_gateway.bat     # Starts Docker Desktop + the WhatsApp gateway container
 │   ├── pre_commit_privacy_check.mjs   # Blocks commits containing your real phone/email
 │   └── install_git_hooks.bat          # Installs the privacy check as .git/hooks/pre-commit
-├── job_scraper/                       # Scraper state and logs (gitignored - personal data)
-│   ├── offline_jobs_log.csv           # Every new listing the offline scraper has found
-│   └── whatsapp_log.csv               # Proof-of-send log for every WhatsApp notification attempt
+├── job_scraper/                       # Scraper state and logs (mostly gitignored - personal data)
+│   ├── offline_jobs_log.csv           # Every new listing the offline scraper has found (gitignored)
+│   ├── scraper_config.json            # Search keywords/locations/page limits - edited via the dashboard's Search settings panel
+│   └── whatsapp_log.csv               # Proof-of-send log for every WhatsApp notification attempt (gitignored)
 ├── .env / .env.example                # Contact data, WhatsApp gateway config (target number/group, credentials)
 ├── job_search_tracker.csv             # Application tracking spreadsheet
 └── SETUP.md                           # Detailed setup guide
@@ -160,7 +194,7 @@ This is a **fork/derivative work**, not original code from scratch. The pieces b
 | [go-whatsapp-web-multidevice](https://github.com/aldinokemal/go-whatsapp-web-multidevice) | Aldino Kemal | MIT | Self-hosted WhatsApp gateway (runs in Docker, unmodified) that `tools/offline_scraper.mjs` talks to for notifications — not bundled in this repo, run as a separate service. |
 | [Claude Code](https://claude.com/claude-code) | Anthropic | Proprietary (referenced, not redistributed) | The agent this whole workflow runs inside of. |
 
-**New work added in this fork** (not part of upstream): `tools/offline_scraper.mjs`, `tools/run_offline_scraper.bat`, `tools/start_whatsapp_gateway.bat`, the WhatsApp notification integration, `.env`/`.env.example`, and all personal profile content under `CLAUDE.md` and `.claude/skills/job-application-assistant/`.
+**New work added in this fork** (not part of upstream): `tools/offline_scraper.mjs`, `tools/run_offline_scraper.bat`, `tools/start_whatsapp_gateway.bat`, the WhatsApp notification integration, the browser dashboard (`tools/dashboard.html`, `tools/dashboard_server.mjs`, `tools/scraper_config_defaults.mjs`, `tools/open_dashboard.bat`), `.env`/`.env.example`, and all personal profile content under `CLAUDE.md` and `.claude/skills/job-application-assistant/`.
 
 ## License
 

@@ -23,82 +23,48 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { DEFAULT_CONFIG } from './scraper_config_defaults.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const SEEN_PATH = path.join(ROOT, 'job_scraper', 'offline_seen.json');
 const LOG_PATH = path.join(ROOT, 'job_scraper', 'offline_jobs_log.csv');
 const TRACKER_PATH = path.join(ROOT, 'job_search_tracker.csv');
+const CONFIG_PATH = path.join(ROOT, 'job_scraper', 'scraper_config.json');
 
 const LINKEDIN_CLI = path.join(ROOT, '.agents/skills/linkedin-search/cli/src/cli.ts');
 
 // ---------------------------------------------------------------------------
-// SEARCH TERMS - edit these to change what gets searched. Mirrors the Priority
-// 1/2/3/5 categories in .claude/skills/job-scraper/search-queries.md.
+// SEARCH TERMS - edit these via the dashboard's "Search settings" panel
+// (tools/open_dashboard.bat), or by hand-editing job_scraper/scraper_config.json
+// directly. Falls back to tools/scraper_config_defaults.mjs if that file
+// doesn't exist yet (fresh clone). Mirrors the Priority 1/2/3/5 categories in
+// .claude/skills/job-scraper/search-queries.md.
 // ---------------------------------------------------------------------------
-const KEYWORDS = [
-  // Role-based (English)
-  'AI Engineer Intern',
-  'IoT Engineer Intern',
-  'Embedded Systems Intern',
-  'Machine Learning Intern',
-  'Automation Intern',
-  'Electrical Engineering Intern',
-  'Electrical Maintenance',
-  'Electrical Engineering Apprenticeship',
-  'Automation Apprenticeship',
-  'Apprenticeship Electrical',
-  'Instrumentation Intern',
-  'PLC Intern',
-  'Robotics Intern',
-  'Software Engineer Intern',
-  'Fullstack Developer Intern',
+function loadConfig() {
+  if (!existsSync(CONFIG_PATH)) return DEFAULT_CONFIG;
+  try {
+    const onDisk = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
+    return { ...DEFAULT_CONFIG, ...onDisk };
+  } catch {
+    console.error(`  [warn] job_scraper/scraper_config.json gagal dibaca, pakai default bawaan.`);
+    return DEFAULT_CONFIG;
+  }
+}
 
-  // Magang (Indonesian - internship)
-  'Magang Teknik Elektro',
-  'Magang Elektro',
-  'Magang Electrical',
-  'Magang Maintenance',
-  'Magang Otomasi',
-  'Magang Embedded System',
-  'Magang IoT',
-  'Magang AI',
-  'Magang PLC',
-  'Magang Instrumentasi',
-  'Magang IT',
-  'Magang Fullstack',
-
-  // Kerja Praktek / Kerja Praktik (Indonesian - university-required practical
-  // placement; both spellings are common in real postings, so both are
-  // searched). Mirrors the same discipline spread as the Magang section above.
-  'Kerja Praktek Teknik Elektro',
-  'Kerja Praktik Teknik Elektro',
-  'Kerja Praktek Elektro',
-  'Kerja Praktek Otomasi',
-  'Kerja Praktek IoT',
-  'Kerja Praktek Embedded System',
-  'Kerja Praktek PLC',
-  'KP Teknik Elektro',
-
-  // Student-targeted postings, incl. structured entry-level programs
-  'Mahasiswa Teknik Elektro',
-  'Mahasiswa Elektro',
-  'Electrical Engineering Student',
-  'Graduate Engineer Program',
-  'Engineering Trainee',
-  'SCADA Intern',
-];
+const CONFIG = loadConfig();
+const KEYWORDS = CONFIG.keywords;
 
 // How many result pages to pull per keyword, per portal. LinkedIn's own ToS asks
-// for low volume, so it stays at 1 page; JobStreet is the main coverage gap this
-// script exists to close, so it gets 2.
-const LINKEDIN_MAX_PAGES = 1;
-const JOBSTREET_MAX_PAGES = 2;
+// for low volume, so it defaults to 1 page; JobStreet is the main coverage gap
+// this script exists to close, so it defaults to 2.
+const LINKEDIN_MAX_PAGES = CONFIG.linkedinMaxPages;
+const JOBSTREET_MAX_PAGES = CONFIG.jobstreetMaxPages;
 
 // Cities/regions close to Surabaya (no relocation needed) vs. generally workable
-// vs. everything else. Edit if your home base or acceptable range changes.
-const IDEAL_LOCATIONS = ['surabaya', 'sidoarjo', 'gresik', 'mojokerto', 'jombang', 'lamongan'];
-const ACCEPTABLE_LOCATIONS = ['jawa timur', 'east java', 'malang', 'jakarta', 'bandung', 'yogyakarta', 'remote'];
+// vs. everything else.
+const IDEAL_LOCATIONS = CONFIG.idealLocations;
+const ACCEPTABLE_LOCATIONS = CONFIG.acceptableLocations;
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const CSV_HEADER = 'found_date,portal,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,url\n';
@@ -418,9 +384,11 @@ const WA_ENABLED = (process.env.WA_ENABLED ?? 'true') !== 'false';
 const WA_BASE_URL = process.env.WA_BASE_URL || 'http://localhost:3000';
 const WA_AUTH_USER = process.env.WA_AUTH_USER || 'user1';
 const WA_AUTH_PASS = process.env.WA_AUTH_PASS || 'pass1';
-const WA_TARGET = process.env.WA_TARGET || '6285812272218@s.whatsapp.net';
 const WA_DEVICE_ID = process.env.WA_DEVICE_ID || '';
-const WA_TARGETS = (process.env.WA_TARGET || '6285812272218@s.whatsapp.net')
+// Placeholder only - never a real number. Set WA_TARGET in .env (gitignored);
+// see .env.example for the format. No .env means this placeholder gets used,
+// so a send would go nowhere real rather than to a hardcoded personal number.
+const WA_TARGETS = (process.env.WA_TARGET || '6281234567890@s.whatsapp.net')
   .split(',')
   .map((t) => t.trim())
   .filter(Boolean);

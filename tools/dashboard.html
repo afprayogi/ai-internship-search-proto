@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Search Dashboard</title>
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --card-bg: #ffffff;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --active: #3b82f6;
+    --interview: #f59e0b;
+    --offer: #8b5cf6;
+    --hired: #22c55e;
+    --closed: #ef4444;
+    --accent: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-width: 900px;
+    padding-bottom: 60px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  header h1 { font-size: 22px; margin: 0; display: flex; align-items: center; gap: 8px; }
+  header .meta { color: var(--text-muted); font-size: 13px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button, .btn {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: var(--shadow);
+  }
+  button:hover, .btn:hover { background: #f9fafb; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover { background: #1e293b; }
+  button.danger { color: var(--closed); }
+  #importFile { display: none; }
+
+  .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    border-left: 4px solid var(--text-muted);
+  }
+  .stat-card .num { font-size: 26px; font-weight: 700; line-height: 1.2; }
+  .stat-card .label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .stat-card.total { border-left-color: var(--accent); }
+  .stat-card.active { border-left-color: var(--active); }
+  .stat-card.interview { border-left-color: var(--interview); }
+  .stat-card.offer { border-left-color: var(--offer); }
+  .stat-card.hired { border-left-color: var(--hired); }
+  .stat-card.closed { border-left-color: var(--closed); }
+
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .chart-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .chart-card h3 { margin: 0 0 4px; font-size: 14px; }
+  .chart-card .sub { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; }
+  .chart-card svg { width: 100%; height: auto; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .table-card { background: var(--card-bg); border-radius: 10px; box-shadow: var(--shadow); padding: 16px; }
+  .table-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .table-toolbar input[type="text"], .table-toolbar select {
+    font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: #fff;
+  }
+  .table-toolbar input[type="text"] { flex: 1; min-width: 200px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 8px 10px; color: var(--text-muted);
+    font-weight: 600; border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr:hover { background: #f3f4f6; }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    color: #fff; white-space: nowrap;
+  }
+  .row-actions { white-space: nowrap; }
+  .row-actions button { padding: 4px 8px; font-size: 12px; box-shadow: none; }
+  .notes-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  a.source-link { color: var(--active); text-decoration: none; }
+  a.source-link:hover { text-decoration: underline; }
+
+  footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 24px; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.45);
+    display: none; align-items: flex-start; justify-content: center; padding: 40px 16px;
+    overflow-y: auto; z-index: 50;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; width: 100%; max-width: 640px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25); padding: 24px;
+  }
+  .modal h2 { margin: 0 0 16px; font-size: 18px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-grid label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+  .form-grid input, .form-grid select, .form-grid textarea {
+    width: 100%; font: inherit; font-size: 13px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  }
+  .form-grid textarea { resize: vertical; min-height: 60px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 8px;
+    font-size: 13px; box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+
+  .section-card { background: var(--card-bg); border-radius: 10px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 20px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .section-head h2 { margin: 0; font-size: 16px; }
+  .section-head .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .server-banner {
+    display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 8px 12px;
+    border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border); background: #fff;
+  }
+  .server-banner .dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; flex: none; }
+  .server-banner.online .dot { background: var(--hired); }
+  .server-banner.offline .dot { background: var(--closed); }
+  .log-box {
+    background: #0f172a; color: #e2e8f0; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: 12px; line-height: 1.5; padding: 12px; border-radius: 8px; max-height: 240px;
+    overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-top: 10px; display: none;
+  }
+  .log-box.show { display: block; }
+  textarea.keyword-list { min-height: 220px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+  .settings-help { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🔍 Job Search Dashboard</h1>
+      <div class="meta" id="lastUpdated">No data yet</div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="addBtn">+ Add application</button>
+      <button id="importBtn">Import CSV</button>
+      <input type="file" id="importFile" accept=".csv,text/csv">
+      <button id="exportBtn">Export CSV</button>
+      <button class="danger" id="clearBtn">Clear all</button>
+    </div>
+  </header>
+
+  <div class="server-banner" id="serverBanner"><span class="dot"></span><span id="serverBannerText">Checking for local server...</span></div>
+
+  <div class="section-card">
+    <div class="section-head">
+      <div>
+        <h2>🕵️ Scraped postings</h2>
+        <div class="sub" id="scrapedSub">via LinkedIn + JobStreet (tools/offline_scraper.mjs)</div>
+      </div>
+      <div class="actions">
+        <button id="settingsBtn">⚙️ Search settings</button>
+        <button class="primary" id="runScraperBtn">▶ Run scraper now</button>
+      </div>
+    </div>
+    <div class="log-box" id="logBox"></div>
+    <div class="table-toolbar" style="margin-top:14px;">
+      <input type="text" id="scrapedSearch" placeholder="Search title, company, or location...">
+      <select id="scrapedPortalFilter"><option value="">All portals</option></select>
+      <select id="scrapedTierFilter"><option value="">All location tiers</option></select>
+    </div>
+    <div id="scrapedTableWrap"></div>
+  </div>
+
+  <div class="stats" id="statCards"></div>
+
+  <div class="charts">
+    <div class="chart-card">
+      <h3>Status breakdown</h3>
+      <p class="sub" id="statusSub">&nbsp;</p>
+      <div id="statusChart"></div>
+    </div>
+    <div class="chart-card">
+      <h3>By sector</h3>
+      <p class="sub">Applications per sector</p>
+      <div id="sectorChart"></div>
+    </div>
+  </div>
+  <div class="charts">
+    <div class="chart-card">
+      <h3>By channel</h3>
+      <p class="sub">Online / referral / other</p>
+      <div id="channelChart"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Application funnel</h3>
+      <p class="sub" id="funnelSub">&nbsp;</p>
+      <div id="funnelChart"></div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="section-head">
+      <div><h2>📋 My applications</h2></div>
+    </div>
+    <div class="table-toolbar">
+      <input type="text" id="searchInput" placeholder="Search company, role, or sector...">
+      <select id="statusFilter"><option value="">All statuses</option></select>
+      <select id="sectorFilter"><option value="">All sectors</option></select>
+    </div>
+    <div id="tableWrap"></div>
+  </div>
+
+  <footer id="footerLine">Generated by Claude Code · ai-job-search</footer>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2 id="modalTitle">Add application</h2>
+    <form id="entryForm">
+      <input type="hidden" id="f_index">
+      <div class="form-grid">
+        <div>
+          <label>Date *</label>
+          <input type="text" id="f_date" placeholder="YYYY-MM-DD or YYYY" required>
+        </div>
+        <div>
+          <label>Company *</label>
+          <input type="text" id="f_company" required>
+        </div>
+        <div>
+          <label>Role *</label>
+          <input type="text" id="f_role" required>
+        </div>
+        <div>
+          <label>Sector</label>
+          <input type="text" id="f_sector">
+        </div>
+        <div>
+          <label>Role type</label>
+          <input type="text" id="f_role_type" placeholder="Internship / Full-time">
+        </div>
+        <div>
+          <label>Channel</label>
+          <input type="text" id="f_channel" list="channelOptions" placeholder="online / referral / other">
+          <datalist id="channelOptions">
+            <option value="online"></option>
+            <option value="referral"></option>
+            <option value="other"></option>
+          </datalist>
+        </div>
+        <div>
+          <label>Status *</label>
+          <select id="f_status" required>
+            <option value="applied">applied</option>
+            <option value="interview">interview</option>
+            <option value="interview_only">interview_only</option>
+            <option value="offer">offer</option>
+            <option value="offer_declined">offer_declined</option>
+            <option value="hired">hired</option>
+            <option value="rejected">rejected</option>
+            <option value="no_response">no_response</option>
+            <option value="withdrawn">withdrawn</option>
+          </select>
+        </div>
+        <div>
+          <label>Fit rating</label>
+          <input type="text" id="f_fit_rating" placeholder="e.g. 4/5">
+        </div>
+        <div>
+          <label>Contact person</label>
+          <input type="text" id="f_contact_person">
+        </div>
+        <div>
+          <label>Source</label>
+          <input type="text" id="f_source" placeholder="URL or channel name">
+        </div>
+        <div>
+          <label>CV file</label>
+          <input type="text" id="f_cv_file" placeholder="cv/main_company_role.tex">
+        </div>
+        <div>
+          <label>Cover letter file</label>
+          <input type="text" id="f_cover_letter_file" placeholder="cover_letters/cover_company_role.tex">
+        </div>
+        <div class="full">
+          <label>Notes</label>
+          <textarea id="f_notes"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancelBtn">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="settingsBackdrop">
+  <div class="modal">
+    <h2>Search settings</h2>
+    <p class="settings-help">Controls what "Run scraper now" searches for. Saved to <code>job_scraper/scraper_config.json</code> and used by <code>run_offline_scraper.bat</code> too.</p>
+    <form id="settingsForm">
+      <div class="form-grid">
+        <div class="full">
+          <label>Keywords (one per line)</label>
+          <textarea class="keyword-list" id="s_keywords"></textarea>
+        </div>
+        <div>
+          <label>Ideal locations (one per line, no relocation needed)</label>
+          <textarea id="s_ideal_locations"></textarea>
+        </div>
+        <div>
+          <label>Acceptable locations (one per line)</label>
+          <textarea id="s_acceptable_locations"></textarea>
+        </div>
+        <div>
+          <label>LinkedIn pages per keyword</label>
+          <input type="number" min="1" max="5" id="s_linkedin_pages">
+        </div>
+        <div>
+          <label>JobStreet pages per keyword</label>
+          <input type="number" min="1" max="5" id="s_jobstreet_pages">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="settingsCancelBtn">Cancel</button>
+        <button type="submit" class="primary">Save settings</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "jobSearchTracker.v1";
+  var FIELDS = ["date","company","sector","role","role_type","channel","status",
+                "contact_person","fit_rating","notes","cv_file","cover_letter_file","source"];
+
+  var STATUS_META = {
+    applied:         { bucket: "Active",            color: "var(--active)" },
+    interview:       { bucket: "Interview",          color: "var(--interview)" },
+    offer:           { bucket: "Offer",              color: "var(--offer)" },
+    hired:           { bucket: "Hired",              color: "var(--hired)" },
+    rejected:        { bucket: "Rejected/Closed",    color: "var(--closed)" },
+    no_response:     { bucket: "Rejected/Closed",    color: "var(--closed)" },
+    "no response":   { bucket: "Rejected/Closed",    color: "var(--closed)" },
+    offer_declined:  { bucket: "Rejected/Closed",    color: "var(--closed)" },
+    interview_only:  { bucket: "Rejected/Closed",    color: "var(--closed)" },
+    withdrawn:       { bucket: "Rejected/Closed",    color: "var(--closed)" }
+  };
+  var BUCKET_COLOR = {
+    "Active": "#3b82f6", "Interview": "#f59e0b", "Offer": "#8b5cf6",
+    "Hired": "#22c55e", "Rejected/Closed": "#ef4444"
+  };
+  var BUCKET_ORDER = ["Active", "Interview", "Offer", "Hired", "Rejected/Closed"];
+
+  function bucketOf(rawStatus) {
+    var key = String(rawStatus || "").trim().toLowerCase();
+    return (STATUS_META[key] && STATUS_META[key].bucket) || "Active";
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  var storageWarned = false;
+  var serverMode = false;
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function save(data) {
+    if (serverMode) {
+      fetch("/api/tracker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).catch(function () { /* best-effort mirror - localStorage stays the source of truth either way */ });
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY + ".updated", new Date().toISOString());
+      return true;
+    } catch (e) {
+      if (!storageWarned) {
+        storageWarned = true;
+        toast("Browser storage is unavailable here - changes won't be saved after you close this page");
+      }
+      return false;
+    }
+  }
+
+  var data = load();
+
+  function sortKey(dateStr) {
+    var s = String(dateStr || "").trim();
+    if (/^\d{4}$/.test(s)) return s + "-01-01";
+    var t = Date.parse(s);
+    return isNaN(t) ? "0000-00-00" : s;
+  }
+
+  function sortedData() {
+    return data.slice().sort(function (a, b) {
+      var ka = sortKey(a.date), kb = sortKey(b.date);
+      if (ka !== kb) return ka < kb ? 1 : -1;
+      return String(a.company || "").localeCompare(String(b.company || ""));
+    });
+  }
+
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+
+  // ---------- stats ----------
+  function computeStats(rows) {
+    var stats = { total: rows.length, buckets: {}, sectors: {}, channels: {}, funnel: {} };
+    BUCKET_ORDER.forEach(function (b) { stats.buckets[b] = 0; });
+    stats.funnel = { Applied: 0, Interview: 0, Offer: 0, Hired: 0 };
+
+    rows.forEach(function (r) {
+      var b = bucketOf(r.status);
+      stats.buckets[b] = (stats.buckets[b] || 0) + 1;
+
+      var sector = (r.sector || "Unspecified").trim() || "Unspecified";
+      stats.sectors[sector] = (stats.sectors[sector] || 0) + 1;
+
+      var ch = (r.channel || "other").trim().toLowerCase() || "other";
+      if (ch !== "online" && ch !== "referral") ch = "other";
+      stats.channels[ch] = (stats.channels[ch] || 0) + 1;
+
+      var st = String(r.status || "").trim().toLowerCase();
+      stats.funnel.Applied++;
+      if (["interview", "interview_only", "offer", "offer_declined", "hired"].indexOf(st) !== -1) stats.funnel.Interview++;
+      if (["offer", "offer_declined", "hired"].indexOf(st) !== -1) stats.funnel.Offer++;
+      if (st === "hired") stats.funnel.Hired++;
+    });
+
+    var resolved = stats.total - stats.buckets["Active"];
+    stats.rejectionRate = resolved > 0 ? Math.round((stats.buckets["Rejected/Closed"] / resolved) * 100) : 0;
+    stats.funnelRate = stats.total > 0 ? Math.round((stats.funnel.Interview / stats.total) * 100) : 0;
+    return stats;
+  }
+
+  // ---------- stat cards ----------
+  function renderStatCards(stats) {
+    var cards = [
+      { cls: "total", label: "Total applications", value: stats.total },
+      { cls: "active", label: "Active", value: stats.buckets["Active"] },
+      { cls: "interview", label: "Interview", value: stats.buckets["Interview"] },
+      { cls: "offer", label: "Offer", value: stats.buckets["Offer"] },
+      { cls: "hired", label: "Hired", value: stats.buckets["Hired"] },
+      { cls: "closed", label: "Rejected/Closed", value: stats.buckets["Rejected/Closed"] }
+    ];
+    document.getElementById("statCards").innerHTML = cards.map(function (c) {
+      return '<div class="stat-card ' + c.cls + '"><div class="num">' + c.value +
+        '</div><div class="label">' + escapeHtml(c.label) + '</div></div>';
+    }).join("");
+  }
+
+  // ---------- SVG charts ----------
+  function svgWrap(inner, w, h, label) {
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + escapeHtml(label) + '">' + inner + '</svg>';
+  }
+
+  function renderDoughnut(stats) {
+    var total = stats.total;
+    var sub = document.getElementById("statusSub");
+    if (total === 0) {
+      document.getElementById("statusChart").innerHTML = '<div class="empty-state">No applications yet</div>';
+      sub.textContent = "Add your first application to see this chart";
+      return;
+    }
+    var cx = 110, cy = 110, r = 80, strokeW = 32;
+    var circumference = 2 * Math.PI * r;
+    var offset = 0;
+    var parts = [];
+    var labelParts = [];
+    BUCKET_ORDER.forEach(function (b) {
+      var count = stats.buckets[b] || 0;
+      if (count === 0) return;
+      var frac = count / total;
+      var len = frac * circumference;
+      parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' +
+        BUCKET_COLOR[b] + '" stroke-width="' + strokeW + '" stroke-dasharray="' + len + ' ' +
+        (circumference - len) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"></circle>');
+      offset += len;
+      labelParts.push(count + " " + b);
+    });
+    parts.push('<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" font-size="24" font-weight="700" fill="var(--text)">' + total + '</text>');
+    parts.push('<text x="' + cx + '" y="' + (cy + 16) + '" text-anchor="middle" font-size="11" fill="var(--text-muted)">total</text>');
+    document.getElementById("statusChart").innerHTML = svgWrap(parts.join(""), 220, 220, "Status breakdown: " + labelParts.join(", "));
+    var legend = BUCKET_ORDER.filter(function (b) { return stats.buckets[b] > 0; }).map(function (b) {
+      return '<span><i style="background:' + BUCKET_COLOR[b] + '"></i>' + escapeHtml(b) + ' (' + stats.buckets[b] + ')</span>';
+    }).join("");
+    document.getElementById("statusChart").innerHTML += '<div class="legend">' + legend + '</div>';
+    sub.textContent = total + " total · " + stats.rejectionRate + "% rejection rate (of resolved)";
+  }
+
+  function barChart(containerId, entries, colorFn, emptyMsg, label) {
+    var el = document.getElementById(containerId);
+    if (!entries.length) { el.innerHTML = '<div class="empty-state">' + escapeHtml(emptyMsg) + '</div>'; return; }
+    var max = Math.max.apply(null, entries.map(function (e) { return e.value; })) || 1;
+    var rowH = 28, gap = 10, labelW = 130, chartW = 500;
+    var h = entries.length * (rowH + gap);
+    var bars = entries.map(function (e, i) {
+      var y = i * (rowH + gap);
+      var w = Math.max((e.value / max) * (chartW - labelW - 40), e.value > 0 ? 4 : 0);
+      var color = colorFn(e.name, i);
+      return '<text x="0" y="' + (y + rowH / 2 + 4) + '" font-size="12" fill="var(--text)">' + escapeHtml(e.name) + '</text>' +
+        '<rect x="' + labelW + '" y="' + y + '" width="' + w + '" height="' + rowH + '" rx="4" fill="' + color + '"></rect>' +
+        '<text x="' + (labelW + w + 8) + '" y="' + (y + rowH / 2 + 4) + '" font-size="12" fill="var(--text)">' + e.value + '</text>';
+    }).join("");
+    el.innerHTML = svgWrap(bars, chartW, h, label);
+  }
+
+  var SECTOR_PALETTE = ["#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e", "#ef4444", "#06b6d4", "#ec4899", "#84cc16"];
+  function renderSectorChart(stats) {
+    var entries = Object.keys(stats.sectors).map(function (k) { return { name: k, value: stats.sectors[k] }; })
+      .sort(function (a, b) { return b.value - a.value; });
+    var labelSummary = entries.map(function (e) { return e.value + " " + e.name; }).join(", ");
+    barChart("sectorChart", entries, function (name, i) { return SECTOR_PALETTE[i % SECTOR_PALETTE.length]; },
+      "No applications yet", "By sector: " + labelSummary);
+  }
+
+  function renderChannelChart(stats) {
+    var order = ["online", "referral", "other"];
+    var entries = order.map(function (k) { return { name: k, value: stats.channels[k] || 0 }; })
+      .filter(function (e, i) { return e.value > 0 || Object.keys(stats.channels).length === 0 || order.indexOf(e.name) !== -1; });
+    entries = order.map(function (k) { return { name: k, value: stats.channels[k] || 0 }; });
+    var labelSummary = entries.map(function (e) { return e.value + " " + e.name; }).join(", ");
+    var hasAny = entries.some(function (e) { return e.value > 0; });
+    if (!hasAny) { document.getElementById("channelChart").innerHTML = '<div class="empty-state">No applications yet</div>'; return; }
+    barChart("channelChart", entries, function () { return "#3b82f6"; }, "No applications yet", "By channel: " + labelSummary);
+  }
+
+  function renderFunnelChart(stats) {
+    var stages = ["Applied", "Interview", "Offer", "Hired"];
+    var entries = stages.map(function (s) { return { name: s, value: stats.funnel[s] || 0 }; });
+    var labelSummary = entries.map(function (e) { return e.name + ": " + e.value; }).join(", ");
+    var colors = { Applied: "#3b82f6", Interview: "#f59e0b", Offer: "#8b5cf6", Hired: "#22c55e" };
+    if (stats.total === 0) { document.getElementById("funnelChart").innerHTML = '<div class="empty-state">No applications yet</div>'; }
+    else barChart("funnelChart", entries, function (name) { return colors[name]; }, "No applications yet", "Application funnel: " + labelSummary);
+    document.getElementById("funnelSub").textContent = stats.funnelRate + "% progressed past resume screen";
+  }
+
+  // ---------- table ----------
+  function populateFilterOptions(rows) {
+    var statusSel = document.getElementById("statusFilter");
+    var sectorSel = document.getElementById("sectorFilter");
+    var curStatus = statusSel.value, curSector = sectorSel.value;
+    var statuses = Array.from(new Set(rows.map(function (r) { return r.status; }).filter(Boolean))).sort();
+    var sectors = Array.from(new Set(rows.map(function (r) { return r.sector; }).filter(Boolean))).sort();
+    statusSel.innerHTML = '<option value="">All statuses</option>' +
+      statuses.map(function (s) { return '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>'; }).join("");
+    sectorSel.innerHTML = '<option value="">All sectors</option>' +
+      sectors.map(function (s) { return '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>'; }).join("");
+    statusSel.value = statuses.indexOf(curStatus) !== -1 ? curStatus : "";
+    sectorSel.value = sectors.indexOf(curSector) !== -1 ? curSector : "";
+  }
+
+  function renderTable() {
+    var rows = sortedData();
+    var search = document.getElementById("searchInput").value.trim().toLowerCase();
+    var statusF = document.getElementById("statusFilter").value;
+    var sectorF = document.getElementById("sectorFilter").value;
+
+    var filtered = rows.filter(function (r) {
+      if (statusF && r.status !== statusF) return false;
+      if (sectorF && r.sector !== sectorF) return false;
+      if (search) {
+        var hay = [r.company, r.role, r.sector].join(" ").toLowerCase();
+        if (hay.indexOf(search) === -1) return false;
+      }
+      return true;
+    });
+
+    var wrap = document.getElementById("tableWrap");
+    if (!filtered.length) {
+      wrap.innerHTML = '<div class="empty-state">' + (rows.length ? "No applications match these filters." :
+        "No applications yet. Click “+ Add application” to get started.") + '</div>';
+      return;
+    }
+
+    var body = filtered.map(function (r) {
+      var idx = data.indexOf(r);
+      var bucket = bucketOf(r.status);
+      var notes = r.notes || "";
+      var notesShort = notes.length > 80 ? notes.slice(0, 80) + "…" : notes;
+      var source = r.source || "";
+      var sourceCell = source
+        ? (/^https?:\/\//i.test(source)
+            ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noopener">Link</a>'
+            : escapeHtml(source))
+        : "—";
+      return "<tr>" +
+        "<td>" + escapeHtml(r.date || "—") + "</td>" +
+        "<td>" + escapeHtml(r.company || "—") + "</td>" +
+        "<td>" + escapeHtml(r.role || "—") + "</td>" +
+        "<td>" + escapeHtml(r.sector || "—") + "</td>" +
+        "<td>" + escapeHtml(r.channel || "—") + "</td>" +
+        '<td><span class="pill" style="background:' + BUCKET_COLOR[bucket] + '">' + escapeHtml(r.status || bucket) + "</span></td>" +
+        '<td class="notes-cell" title="' + escapeHtml(notes) + '">' + (escapeHtml(notesShort) || "—") + "</td>" +
+        "<td>" + sourceCell + "</td>" +
+        '<td class="row-actions">' +
+          '<button data-edit="' + idx + '">Edit</button> ' +
+          '<button data-del="' + idx + '">Delete</button>' +
+        "</td>" +
+      "</tr>";
+    }).join("");
+
+    wrap.innerHTML =
+      '<table><thead><tr>' +
+      "<th>Date</th><th>Company</th><th>Role</th><th>Sector</th><th>Channel</th>" +
+      "<th>Status</th><th>Notes</th><th>Source</th><th>Actions</th>" +
+      "</tr></thead><tbody>" + body + "</tbody></table>";
+
+    wrap.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function () { openModal(parseInt(btn.getAttribute("data-edit"), 10)); });
+    });
+    wrap.querySelectorAll("[data-del]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var i = parseInt(btn.getAttribute("data-del"), 10);
+        if (confirm("Delete this application (" + (data[i].company || "unnamed") + ")?")) {
+          data.splice(i, 1);
+          save(data);
+          renderAll();
+          toast("Application deleted");
+        }
+      });
+    });
+  }
+
+  // ---------- render orchestration ----------
+  function renderAll() {
+    var stats = computeStats(data);
+    renderStatCards(stats);
+    renderDoughnut(stats);
+    renderSectorChart(stats);
+    renderChannelChart(stats);
+    renderFunnelChart(stats);
+    populateFilterOptions(data);
+    renderTable();
+
+    var updated = localStorage.getItem(STORAGE_KEY + ".updated");
+    document.getElementById("lastUpdated").textContent = updated
+      ? "Last updated: " + new Date(updated).toLocaleString()
+      : "No data yet — stored locally in this browser";
+    document.getElementById("footerLine").textContent =
+      "Generated by Claude Code · ai-job-search · " + new Date().toISOString().slice(0, 10) +
+      " · data stored in this browser's local storage";
+  }
+
+  // ---------- modal ----------
+  var backdrop = document.getElementById("modalBackdrop");
+  var form = document.getElementById("entryForm");
+
+  function openModal(editIndex, prefill) {
+    form.reset();
+    document.getElementById("f_index").value = editIndex === null || editIndex === undefined ? "" : editIndex;
+    document.getElementById("modalTitle").textContent = (editIndex === null || editIndex === undefined) ? "Add application" : "Edit application";
+    if (editIndex !== null && editIndex !== undefined && data[editIndex]) {
+      var r = data[editIndex];
+      FIELDS.forEach(function (f) {
+        var el = document.getElementById("f_" + f);
+        if (el) el.value = r[f] || "";
+      });
+    } else {
+      document.getElementById("f_date").value = new Date().toISOString().slice(0, 10);
+      document.getElementById("f_status").value = "applied";
+      if (prefill) {
+        FIELDS.forEach(function (f) {
+          var el = document.getElementById("f_" + f);
+          if (el && prefill[f] != null) el.value = prefill[f];
+        });
+      }
+    }
+    backdrop.classList.add("open");
+    document.getElementById("f_company").focus();
+  }
+  function closeModal() { backdrop.classList.remove("open"); }
+
+  document.getElementById("addBtn").addEventListener("click", function () { openModal(null); });
+  document.getElementById("cancelBtn").addEventListener("click", closeModal);
+  backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeModal(); });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var idxRaw = document.getElementById("f_index").value;
+    var record = {};
+    FIELDS.forEach(function (f) {
+      var el = document.getElementById("f_" + f);
+      record[f] = el ? el.value.trim() : "";
+    });
+    if (!record.company || !record.role || !record.date) {
+      toast("Date, company, and role are required");
+      return;
+    }
+    if (idxRaw !== "") {
+      data[parseInt(idxRaw, 10)] = record;
+    } else {
+      data.push(record);
+    }
+    save(data);
+    closeModal();
+    renderAll();
+    toast("Saved");
+  });
+
+  // ---------- filters ----------
+  document.getElementById("searchInput").addEventListener("input", renderTable);
+  document.getElementById("statusFilter").addEventListener("change", renderTable);
+  document.getElementById("sectorFilter").addEventListener("change", renderTable);
+
+  // ---------- CSV export ----------
+  function csvEscape(v) {
+    var s = String(v == null ? "" : v);
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  document.getElementById("exportBtn").addEventListener("click", function () {
+    var lines = [FIELDS.join(",")];
+    sortedData().forEach(function (r) {
+      lines.push(FIELDS.map(function (f) { return csvEscape(r[f]); }).join(","));
+    });
+    var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "job_search_tracker.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast("Exported " + data.length + " rows");
+  });
+
+  // ---------- CSV import ----------
+  function parseCsv(text) {
+    var rows = [];
+    var i = 0, field = "", row = [], inQuotes = false;
+    var len = text.length;
+    while (i < len) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        field += c; i++; continue;
+      } else {
+        if (c === '"') { inQuotes = true; i++; continue; }
+        if (c === ',') { row.push(field); field = ""; i++; continue; }
+        if (c === '\r') { i++; continue; }
+        if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+        field += c; i++; continue;
+      }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) { return r.length > 1 || (r.length === 1 && r[0] !== ""); });
+  }
+
+  function fuzzyKey(company, role) {
+    return (String(company || "") + "|" + String(role || ""))
+      .toLowerCase().replace(/[^a-z0-9|]/g, "");
+  }
+
+  document.getElementById("importBtn").addEventListener("click", function () {
+    document.getElementById("importFile").click();
+  });
+  document.getElementById("importFile").addEventListener("change", function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var rows = parseCsv(String(reader.result));
+      if (!rows.length) { toast("CSV appears empty"); return; }
+      var header = rows[0].map(function (h) { return h.trim(); });
+      var existingByKey = {};
+      data.forEach(function (r, i) { existingByKey[fuzzyKey(r.company, r.role)] = i; });
+      var added = 0, updated = 0;
+      rows.slice(1).forEach(function (cells) {
+        var record = {};
+        header.forEach(function (h, i) {
+          if (FIELDS.indexOf(h) !== -1) record[h] = (cells[i] || "").trim();
+        });
+        if (!record.company && !record.role) return;
+        var key = fuzzyKey(record.company, record.role);
+        if (existingByKey.hasOwnProperty(key)) {
+          data[existingByKey[key]] = Object.assign({}, data[existingByKey[key]], record);
+          updated++;
+        } else {
+          data.push(record);
+          existingByKey[key] = data.length - 1;
+          added++;
+        }
+      });
+      save(data);
+      renderAll();
+      toast("Imported: " + added + " added, " + updated + " updated");
+      document.getElementById("importFile").value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  // ---------- clear all ----------
+  document.getElementById("clearBtn").addEventListener("click", function () {
+    if (!data.length) { toast("Nothing to clear"); return; }
+    if (confirm("This deletes all " + data.length + " applications stored in this browser. Export a CSV backup first if needed. Continue?")) {
+      data = [];
+      save(data);
+      renderAll();
+      toast("All data cleared");
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Server mode: everything below only works when dashboard.html is served
+  // by tools/dashboard_server.mjs (via tools/open_dashboard.bat), because it
+  // needs to read/spawn things on disk that a plain file:// page cannot.
+  // Opened as a static file, these sections stay in their empty state.
+  // ---------------------------------------------------------------------
+  var scrapedData = [];
+  var scraperConfig = null;
+
+  function setServerBanner(online) {
+    var el = document.getElementById("serverBanner");
+    var text = document.getElementById("serverBannerText");
+    el.className = "server-banner " + (online ? "online" : "offline");
+    text.textContent = online
+      ? "Connected to the local dashboard server - scraping and disk sync are live."
+      : "No local server detected - open via tools\\open_dashboard.bat to search for new internships from here. Application tracking below still works fully offline.";
+    document.getElementById("settingsBtn").disabled = !online;
+    document.getElementById("runScraperBtn").disabled = !online;
+  }
+
+  function renderScrapedTable() {
+    var wrap = document.getElementById("scrapedTableWrap");
+    if (!serverMode) {
+      wrap.innerHTML = '<div class="empty-state">Start the dashboard via tools\\open_dashboard.bat to search for new internships and see results here.</div>';
+      return;
+    }
+    var search = document.getElementById("scrapedSearch").value.trim().toLowerCase();
+    var portalF = document.getElementById("scrapedPortalFilter").value;
+    var tierF = document.getElementById("scrapedTierFilter").value;
+
+    var rows = scrapedData.filter(function (r) {
+      if (portalF && r.portal !== portalF) return false;
+      if (tierF && r.location_tier !== tierF) return false;
+      if (search) {
+        var hay = [r.title, r.company, r.location].join(" ").toLowerCase();
+        if (hay.indexOf(search) === -1) return false;
+      }
+      return true;
+    }).sort(function (a, b) {
+      return String(b.found_date || "").localeCompare(String(a.found_date || ""));
+    });
+
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty-state">' + (scrapedData.length
+        ? "No postings match these filters."
+        : 'No postings scraped yet. Click "▶ Run scraper now" above.') + '</div>';
+      return;
+    }
+
+    var body = rows.map(function (r, i) {
+      var salary = r.salary || "—";
+      return "<tr>" +
+        "<td>" + escapeHtml(r.found_date || "—") + "</td>" +
+        "<td>" + escapeHtml(r.portal || "—") + "</td>" +
+        "<td>" + escapeHtml(r.title || "—") + "</td>" +
+        "<td>" + escapeHtml(r.company || "—") + "</td>" +
+        "<td>" + escapeHtml(r.location || "—") + "</td>" +
+        "<td>" + escapeHtml(r.location_tier || "—") + "</td>" +
+        "<td>" + escapeHtml(salary) + "</td>" +
+        '<td>' + (r.url ? '<a class="source-link" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Open</a>' : "—") + "</td>" +
+        '<td class="row-actions"><button data-track="' + i + '">+ Track</button></td>' +
+        "</tr>";
+    }).join("");
+
+    wrap.innerHTML =
+      '<table><thead><tr><th>Found</th><th>Portal</th><th>Title</th><th>Company</th>' +
+      '<th>Location</th><th>Tier</th><th>Salary</th><th>Link</th><th>Actions</th></tr></thead>' +
+      "<tbody>" + body + "</tbody></table>";
+
+    wrap.querySelectorAll("[data-track]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var r = rows[parseInt(btn.getAttribute("data-track"), 10)];
+        openModal(null, {
+          company: r.company, role: r.title, source: r.url,
+          channel: "online", notes: "Found via offline scraper (" + r.portal + ")",
+        });
+      });
+    });
+  }
+
+  function populateScrapedFilterOptions() {
+    var portalSel = document.getElementById("scrapedPortalFilter");
+    var tierSel = document.getElementById("scrapedTierFilter");
+    var portals = Array.from(new Set(scrapedData.map(function (r) { return r.portal; }).filter(Boolean))).sort();
+    var tiers = Array.from(new Set(scrapedData.map(function (r) { return r.location_tier; }).filter(Boolean))).sort();
+    portalSel.innerHTML = '<option value="">All portals</option>' +
+      portals.map(function (p) { return '<option value="' + escapeHtml(p) + '">' + escapeHtml(p) + '</option>'; }).join("");
+    tierSel.innerHTML = '<option value="">All location tiers</option>' +
+      tiers.map(function (t) { return '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>'; }).join("");
+  }
+
+  function loadScraped() {
+    if (!serverMode) { renderScrapedTable(); return; }
+    fetch("/api/scraped").then(function (r) { return r.json(); }).then(function (rows) {
+      scrapedData = rows;
+      document.getElementById("scrapedSub").textContent =
+        rows.length + " postings on file · via LinkedIn + JobStreet (tools/offline_scraper.mjs)";
+      populateScrapedFilterOptions();
+      renderScrapedTable();
+    }).catch(function () { /* server briefly unreachable - keep last known table */ });
+  }
+
+  document.getElementById("scrapedSearch").addEventListener("input", renderScrapedTable);
+  document.getElementById("scrapedPortalFilter").addEventListener("change", renderScrapedTable);
+  document.getElementById("scrapedTierFilter").addEventListener("change", renderScrapedTable);
+
+  // ---------- settings modal ----------
+  var settingsBackdrop = document.getElementById("settingsBackdrop");
+  function linesToArray(text) {
+    return text.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+  }
+  document.getElementById("settingsBtn").addEventListener("click", function () {
+    if (!serverMode) return;
+    fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
+      scraperConfig = cfg;
+      document.getElementById("s_keywords").value = (cfg.keywords || []).join("\n");
+      document.getElementById("s_ideal_locations").value = (cfg.idealLocations || []).join("\n");
+      document.getElementById("s_acceptable_locations").value = (cfg.acceptableLocations || []).join("\n");
+      document.getElementById("s_linkedin_pages").value = cfg.linkedinMaxPages || 1;
+      document.getElementById("s_jobstreet_pages").value = cfg.jobstreetMaxPages || 2;
+      settingsBackdrop.classList.add("open");
+    }).catch(function () { toast("Could not reach the local server"); });
+  });
+  document.getElementById("settingsCancelBtn").addEventListener("click", function () {
+    settingsBackdrop.classList.remove("open");
+  });
+  settingsBackdrop.addEventListener("click", function (e) { if (e.target === settingsBackdrop) settingsBackdrop.classList.remove("open"); });
+  document.getElementById("settingsForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var body = {
+      keywords: linesToArray(document.getElementById("s_keywords").value),
+      idealLocations: linesToArray(document.getElementById("s_ideal_locations").value),
+      acceptableLocations: linesToArray(document.getElementById("s_acceptable_locations").value),
+      linkedinMaxPages: parseInt(document.getElementById("s_linkedin_pages").value, 10) || 1,
+      jobstreetMaxPages: parseInt(document.getElementById("s_jobstreet_pages").value, 10) || 2,
+    };
+    if (!body.keywords.length) { toast("Add at least one keyword"); return; }
+    fetch("/api/config", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    }).then(function (r) { return r.json(); }).then(function () {
+      settingsBackdrop.classList.remove("open");
+      toast("Search settings saved");
+    }).catch(function () { toast("Could not save settings"); });
+  });
+
+  // ---------- run scraper + live log stream ----------
+  var scraperEventSource = null;
+  function appendLog(line) {
+    var box = document.getElementById("logBox");
+    box.classList.add("show");
+    box.textContent += line + "\n";
+    box.scrollTop = box.scrollHeight;
+  }
+  function connectLogStream() {
+    if (scraperEventSource) scraperEventSource.close();
+    document.getElementById("logBox").textContent = "";
+    scraperEventSource = new EventSource("/api/scraper/stream");
+    scraperEventSource.onmessage = function (e) {
+      try { appendLog(JSON.parse(e.data)); } catch (err) { appendLog(String(e.data)); }
+    };
+    scraperEventSource.addEventListener("done", function (e) {
+      var runBtn = document.getElementById("runScraperBtn");
+      runBtn.disabled = false;
+      runBtn.textContent = "▶ Run scraper now";
+      scraperEventSource.close();
+      loadScraped();
+      toast("Scraper run finished");
+    });
+    scraperEventSource.onerror = function () { /* connection dropped - log already has what it had */ };
+  }
+  document.getElementById("runScraperBtn").addEventListener("click", function () {
+    if (!serverMode) return;
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = "Running...";
+    fetch("/api/scraper/run", { method: "POST" }).then(function (r) { return r.json(); }).then(function (res) {
+      if (!res.started) {
+        toast("A scraper run is already in progress");
+        btn.disabled = false;
+        btn.textContent = "▶ Run scraper now";
+        return;
+      }
+      connectLogStream();
+    }).catch(function () {
+      toast("Could not reach the local server");
+      btn.disabled = false;
+      btn.textContent = "▶ Run scraper now";
+    });
+  });
+
+  // ---------- init ----------
+  function init() {
+    fetch("/api/scraped", { method: "GET" }).then(function (r) {
+      if (!r.ok) throw new Error("no server");
+      serverMode = true;
+      setServerBanner(true);
+      loadScraped();
+      // Only seed from the on-disk tracker if this browser has no local data
+      // yet, so an existing localStorage tracker is never silently overwritten.
+      if (data.length === 0) {
+        fetch("/api/tracker").then(function (r2) { return r2.json(); }).then(function (rows) {
+          if (rows && rows.length) {
+            data = rows;
+            save(data);
+            renderAll();
+          }
+        }).catch(function () { /* ignore */ });
+      }
+    }).catch(function () {
+      serverMode = false;
+      setServerBanner(false);
+      renderScrapedTable();
+    });
+    renderAll();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
