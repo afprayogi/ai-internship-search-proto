@@ -10,8 +10,8 @@ framework_version: 1.1.1
 ## Identity
 - **Name:** Ahmad Fauzan Prayogi
 - **Location:** Jombang, Jawa Timur, Indonesia (studying in Surabaya)
-- **Phone:** 085812272218
-- **Email:** prayogismkn3@gmail.com
+- **Phone:** [lihat .env - CANDIDATE_PHONE] <!-- Data asli sengaja dipindah ke .env (gitignored) supaya gak ikut ke-push ke GitHub. Claude: ambil nilai aslinya dari .env tiap kali butuh nomor HP buat CV/cover letter/lamaran. -->
+- **Email:** [lihat .env - CANDIDATE_EMAIL] <!-- Sama seperti Phone di atas - nilai asli ada di .env, bukan di file ini. -->
 - **LinkedIn:** https://id.linkedin.com/in/ahmad-fauzan-prayogi
 - **GitHub:** https://github.com/afprayogi
 - **Status:** Undergraduate student (4rd year, Electrical Automation Engineering, Institut Teknologi Sepuluh Nopember) - actively seeking an internship (magang)

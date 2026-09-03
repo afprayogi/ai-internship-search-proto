@@ -18,6 +18,7 @@ This repo is a job application workspace. Claude acts as a career advisor and ap
 ### Identity
 - **Name:** Ahmad Fauzan Prayogi
 - **Location:** Jombang, Jawa Timur, Indonesia (currently based in Surabaya for studies at ITS; open to internships anywhere in Indonesia — onsite, hybrid, or remote)
+- **Phone / Email:** Kept out of this file on purpose — real values live in `.env` (`CANDIDATE_PHONE`, `CANDIDATE_EMAIL`), which is gitignored. **When drafting a CV, cover letter, or any real application (`/apply`), read the actual phone/email from `.env`** — the placeholder in `01-candidate-profile.md` is intentional, not a gap to guess around.
 - **Languages:**
   | Language | Level |
   |----------|-------|
@@ -30,13 +31,13 @@ This repo is a job application workspace. Claude acts as a career advisor and ap
   04-job-evaluation.md's Language Gate. -->
 - **CV language:** English <!-- English unless your market expects otherwise; /setup asks -->
 
-- **Status:** Undergraduate student, 3rd year Electrical Automation Engineering (ITS), GPA 3.32/4.00 — actively seeking an **internship (magang)**, not a full-time role
+- **Status:** Undergraduate student, 4th year Electrical Automation Engineering (ITS), GPA 3.44/4.00 — actively seeking an **internship (magang)**, not a full-time role
 - **LinkedIn headline:** "Electrical Automation Engineering Student (ITS) | AI Development, AIoT & MLOps | Bridging Hardware-Software Gaps"
 
 ### Education
 <!-- List your degrees, most recent first -->
 - **BSc in Electrical Automation Engineering** (Aug 2023 - expected 2027, in progress) - Institut Teknologi Sepuluh Nopember (ITS), Surabaya, Indonesia
-  - GPA: 3.32/4.00 (3rd year)
+  - GPA: 3.44/4.00 (4th year)
   - Topics: Algorithm & Programming, Microprocessor & Embedded Systems, Digital Image Processing, Maintenance & Repair Technique, Intelligent Vehicle Systems, Industrial Optimization, Industrial Robotics, Intelligent Technology Engineering
 
 ### Professional Experience

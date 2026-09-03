@@ -96,6 +96,22 @@ Searches LinkedIn + JobStreet for every keyword in `tools/offline_scraper.mjs` (
 
 Every send attempt (success or failure) is permanently logged to `job_scraper/whatsapp_log.csv` — proof of what was sent, when, and to whom. Set `WA_DRY_RUN=true` in `.env` to build and log messages without ever actually sending them, useful while testing configuration changes.
 
+### 4. Privacy pre-commit check (recommended)
+
+This repo's personal contact data (phone, email) once got committed and pushed to a public GitHub repo by accident. To make sure that never happens again, there's a Git hook that scans every commit for your real contact info before it's allowed through:
+
+```
+tools\install_git_hooks.bat
+```
+
+Run it once per clone (Git hooks aren't version-controlled by Git itself, so a fresh clone needs this step). After that, every `git commit` runs `tools/pre_commit_privacy_check.mjs` automatically:
+
+- **Blocks the commit** if it finds your real phone/email (from `.env`'s `CANDIDATE_PHONE`/`CANDIDATE_EMAIL`) in any staged file, in *any* format (local `08...`, `+62...`, or embedded in a WhatsApp JID like `62...@s.whatsapp.net`).
+- **Warns but doesn't block** on other email/phone-shaped strings (job posting emails, template placeholders, etc. are legitimate and common).
+- Bypass for a specific commit you've manually verified is safe: `git commit --no-verify`.
+
+Keep `CANDIDATE_PHONE`/`CANDIDATE_EMAIL` in `.env` up to date — the check is only as good as those two values.
+
 ## Project structure
 
 ```
@@ -111,11 +127,14 @@ jobsearch/
 ├── documents/                         # Source materials for /setup and /expand
 ├── tools/
 │   ├── offline_scraper.mjs            # Standalone LinkedIn + JobStreet scraper (no Claude)
-│   └── run_offline_scraper.bat        # Double-click entry point for the offline scraper
+│   ├── run_offline_scraper.bat        # Double-click entry point for the offline scraper
+│   ├── start_whatsapp_gateway.bat     # Starts Docker Desktop + the WhatsApp gateway container
+│   ├── pre_commit_privacy_check.mjs   # Blocks commits containing your real phone/email
+│   └── install_git_hooks.bat          # Installs the privacy check as .git/hooks/pre-commit
 ├── job_scraper/                       # Scraper state and logs (gitignored - personal data)
 │   ├── offline_jobs_log.csv           # Every new listing the offline scraper has found
 │   └── whatsapp_log.csv               # Proof-of-send log for every WhatsApp notification attempt
-├── .env / .env.example                # WhatsApp gateway config (target number/group, credentials)
+├── .env / .env.example                # Contact data, WhatsApp gateway config (target number/group, credentials)
 ├── job_search_tracker.csv             # Application tracking spreadsheet
 └── SETUP.md                           # Detailed setup guide
 ```
@@ -124,7 +143,7 @@ jobsearch/
 
 This is a personal internship-search workspace, not a general-purpose open-source project — but if you're helping out (a mentor reviewing applications, a classmate adapting this for their own search, or anyone picking up where this leaves off):
 
-- **Personal data stays local.** Everything under `job_scraper/`, `.env`, generated CVs/cover letters (`cv/main_*.tex`, `cover_letters/cover_*.tex`), and `documents/` is gitignored on purpose. Never commit real contact details, application history, or WhatsApp credentials.
+- **Personal data stays local.** Everything under `job_scraper/`, `.env`, generated CVs/cover letters (`cv/main_*.tex`, `cover_letters/cover_*.tex`), and `documents/` is gitignored on purpose. Never commit real contact details, application history, or WhatsApp credentials. Run `tools/install_git_hooks.bat` once per clone — it installs a pre-commit check that blocks any commit containing your real phone/email in any format, so this can't slip through by accident (this happened once already; that's why the check exists).
 - **Forking this for your own search:** follow the upstream [MadsLorentzen/ai-job-search](https://github.com/MadsLorentzen/ai-job-search) setup, then treat `tools/offline_scraper.mjs` as an optional add-on — it's self-contained and doesn't require any of the WhatsApp/Docker pieces to be useful (LinkedIn + JobStreet search alone works standalone).
 - **Proposing changes to the Claude-driven workflow** (commands, skills, templates): see the upstream [CONTRIBUTING.md](CONTRIBUTING.md) — it explains what belongs in a fork versus what's worth upstreaming.
 - **Changes to the offline tooling** (`tools/offline_scraper.mjs`, the `.bat` files): these are fork-specific and don't need to follow the upstream contribution process. Keep edits self-documenting (inline comments over external docs) since this is meant to be readable and editable without deep JS knowledge — see the comment blocks at the top of each config section (`KEYWORDS`, `WA_*`) before changing behavior.

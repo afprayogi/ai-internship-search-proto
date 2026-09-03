@@ -61,11 +61,12 @@ skills-lock.json
 # Extension-agnostic on the ignore side: a custom template registered via
 # /add-template (e.g. Typst) writes main_<company>_<role>.typ instead of
 # .tex, and it must be ignored just as reliably as the stock LaTeX output.
-# The negations stay .tex-only - the stock example files are always LaTeX,
-# and a wildcard negation (!cv/main_example.*) would also re-include build
-# artifacts like main_example.pdf/.aux.
+#
+# cv/main_example.tex is DELIBERATELY NOT re-included here (unlike upstream's
+# default, which tracks it as a shareable "master reference" template). This
+# fork's main_example.tex has real personal contact data compiled into it
+# (phone/email), so it stays untracked/local-only like every other main_*.tex.
 cv/main_*.*
-!cv/main_example.tex
 cv/*.txt
 cover_letters/cover_*.*
 cover_letters/Cover_*.*
