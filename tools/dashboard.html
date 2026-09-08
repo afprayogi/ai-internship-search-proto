@@ -239,6 +239,7 @@
         <input type="number" id="maxAgeDays" min="1" max="365" value="30">
         <span>days count as expired.</span>
         <button class="danger" id="cleanupBtn">🗑️ Delete expired postings now</button>
+        <button class="danger" id="clearScrapedBtn">🗑️ Clear all scraped postings</button>
         <span class="settings-help" id="expiryHint"></span>
       </div>
       <div id="scrapedTableWrap"></div>
@@ -1090,6 +1091,18 @@
     }).catch(function () { toast("Could not reach the local server"); });
   });
 
+  document.getElementById("clearScrapedBtn").addEventListener("click", function () {
+    if (!serverMode) { toast("Could not reach the local server"); return; }
+    if (!scrapedData.length) { toast("Nothing to clear"); return; }
+    if (!confirm("Permanently delete ALL " + scrapedData.length + " scraped posting(s) from " +
+        "job_scraper/offline_jobs_log.csv? This can't be undone - \"Run scraper now\" will start finding them fresh again.")) return;
+    fetch("/api/scraped/clear", { method: "POST" }).then(function (r) { return r.json(); }).then(function (res) {
+      toast("Cleared " + res.removed + " scraped posting(s)");
+      scrapedPage = 1;
+      loadScraped();
+    }).catch(function () { toast("Could not reach the local server"); });
+  });
+
   // ---------- settings modal ----------
   var settingsBackdrop = document.getElementById("settingsBackdrop");
   function linesToArray(text) {
@@ -1120,12 +1133,12 @@
       linkedinMaxPages: parseInt(document.getElementById("s_linkedin_pages").value, 10) || 1,
       jobstreetMaxPages: parseInt(document.getElementById("s_jobstreet_pages").value, 10) || 2,
     };
-    if (!body.keywords.length) { toast("Add at least one keyword"); return; }
+    if (!body.keywords.length && !confirm("No keywords set - \"Run scraper now\" won't find anything until you add some. Save anyway?")) return;
     fetch("/api/config", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     }).then(function (r) { return r.json(); }).then(function () {
       settingsBackdrop.classList.remove("open");
-      toast("Search settings saved");
+      toast(body.keywords.length ? "Search settings saved" : "Search settings saved (no keywords)");
     }).catch(function () { toast("Could not save settings"); });
   });
 

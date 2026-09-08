@@ -209,6 +209,14 @@ function saveConfig(partial) {
 // anything older than maxAgeDays (by found_date) gets dropped for good.
 // Rows with an unparseable found_date are kept rather than guessed at.
 // ---------------------------------------------------------------------------
+function clearAllScrapedPostings() {
+  const removed = existsSync(SCRAPED_LOG_PATH)
+    ? csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS).length
+    : 0;
+  writeFileSync(SCRAPED_LOG_PATH, SCRAPED_FIELDS.join(',') + '\n', 'utf-8');
+  return { removed, remaining: 0 };
+}
+
 function cleanupExpiredPostings(maxAgeDays) {
   if (!existsSync(SCRAPED_LOG_PATH)) return { removed: 0, remaining: 0 };
   const records = csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS);
@@ -249,6 +257,9 @@ const server = Bun.serve({
       return json(csvToRecords(text));
     }
 
+    if (url.pathname === '/api/scraped/clear' && req.method === 'POST') {
+      return json(clearAllScrapedPostings());
+    }
     if (url.pathname === '/api/scraped/cleanup' && req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       const maxAgeDays = Number(body.maxAgeDays);
