@@ -15,13 +15,31 @@
 // the page falls back to its original offline-only, localStorage-backed mode.
 //
 // Run manually: bun run tools/dashboard_server.mjs (or double-click open_dashboard.bat)
+//
+// Also runnable as a standalone .exe (no Bun install needed to launch it,
+// only to build it): tools\build_dashboard_exe.bat compiles this file with
+// `bun build --compile` into tools/JobSearchDashboard.exe. "Run scraper now"
+// still needs `bun` on PATH though, since it spawns offline_scraper.mjs (and
+// that in turn spawns the LinkedIn CLI) as separate bun subprocesses that
+// aren't bundled into the compiled binary.
+//
+// `bun build --compile` embeds this script inside the executable, so
+// import.meta.url no longer points at a real path on disk (it resolves to a
+// virtual in-memory path instead) - __dirname has to come from the exe's own
+// location (process.execPath) in that case, or every readFileSync below
+// would fail to find dashboard.html/offline_scraper.mjs next to it. Detected
+// by checking whether dashboard.html actually exists next to the resolved
+// import.meta.url path, rather than pattern-matching Bun's internal virtual
+// path prefix (seen in testing as "B:/~BUN/root/...", but that's an
+// implementation detail that could change between Bun versions).
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { DEFAULT_CONFIG } from './scraper_config_defaults.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const sourceDir = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = existsSync(path.join(sourceDir, 'dashboard.html')) ? sourceDir : path.dirname(process.execPath);
 const ROOT = path.resolve(__dirname, '..');
 const PORT = Number(process.env.DASHBOARD_PORT) || 4870;
 

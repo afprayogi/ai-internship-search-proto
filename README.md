@@ -115,6 +115,12 @@ tools\open_dashboard.bat
 
 Starts a tiny localhost-only server (`tools/dashboard_server.mjs`, needs Bun) and opens `http://localhost:4870/` — a single-page dashboard covering both halves of the pipeline: **finding** internships and **tracking** applications.
 
+<p align="center">
+  <img src="assets/dashboard_preview.svg" alt="Job Search Dashboard preview: scraped postings table, stat cards, and status/sector charts" width="820">
+  <br>
+  <sub><em>Illustrative preview built from the actual layout/colors — open <code>tools\open_dashboard.bat</code> to see it live with your own data.</em></sub>
+</p>
+
 **Scraped postings** (top of the page):
 - Shows every listing in `job_scraper/offline_jobs_log.csv` — the exact same file `run_offline_scraper.bat` writes to — with search + portal/location-tier filters.
 - **▶ Run scraper now** runs `tools/offline_scraper.mjs` directly from the browser and streams its console output live (the same thing you'd see running the `.bat` file, just inside the page). Only one run at a time; a second click while one is running is a no-op, not a duplicate run.
@@ -124,6 +130,16 @@ Starts a tiny localhost-only server (`tools/dashboard_server.mjs`, needs Bun) an
 **My applications** (stat cards, charts, table): add/edit/delete applications by hand, same as before. Every change is saved **immediately to the browser's local storage** first, so nothing is lost if the page or server closes mid-edit; with the server running, each change is *also* written straight to `job_search_tracker.csv` on disk, so `/rank`, `/outcome`, and the scraper's own already-applied filter all see the same data without a manual export step. **Export CSV** / **Import CSV** still work for moving data to/from another machine or merging in an existing tracker (matches by company+role, so re-importing never duplicates rows).
 
 No Bun, or opened `tools/dashboard.html` directly as a file instead of through the `.bat`? The page detects that (a banner at the top says so) and falls back to tracker-only mode against local storage — scraping and disk sync are simply unavailable until the server's running.
+
+**Running it as a plain .exe (no visible Bun command):**
+
+```
+tools\build_dashboard_exe.bat
+```
+
+Compiles `tools/dashboard_server.mjs` into a standalone `tools\JobSearchDashboard.exe` via Bun's `bun build --compile` (needs Bun *to build* it, but the resulting `.exe` embeds the Bun runtime, so nothing else needs Bun installed just to run it). `tools\open_dashboard.bat` automatically prefers this `.exe` once it exists, falling back to `bun run tools\dashboard_server.mjs` if it doesn't. Re-run `build_dashboard_exe.bat` after pulling changes to `dashboard_server.mjs`, `dashboard.html`, or `scraper_config_defaults.mjs`, so the `.exe` stays in sync with the source. The `.exe` itself is a ~90MB build artifact and isn't committed to git (see `.gitignore`) — everyone builds their own from source.
+
+One caveat: **"Run scraper now" still needs Bun on PATH** even from the `.exe`, since it spawns `tools/offline_scraper.mjs` (and that spawns the LinkedIn CLI) as separate `bun` subprocesses that aren't bundled into the compiled binary. Data storage is unaffected either way — the `.exe` resolves `job_search_tracker.csv`, `job_scraper/offline_jobs_log.csv`, and `job_scraper/scraper_config.json` relative to its own location on disk, same as the `.mjs` version does.
 
 ### 5. Privacy pre-commit check (recommended)
 
@@ -160,7 +176,8 @@ jobsearch/
 │   ├── scraper_config_defaults.mjs    # Default search keywords/locations/page limits
 │   ├── dashboard.html                 # Dashboard UI - scraped postings + application tracker
 │   ├── dashboard_server.mjs           # Localhost server behind the dashboard (serves it, runs the scraper, reads/writes CSVs)
-│   ├── open_dashboard.bat             # Double-click entry point for the dashboard
+│   ├── build_dashboard_exe.bat        # Compiles dashboard_server.mjs -> JobSearchDashboard.exe (gitignored build artifact)
+│   ├── open_dashboard.bat             # Double-click entry point - runs the .exe if built, else `bun run` the server
 │   ├── start_whatsapp_gateway.bat     # Starts Docker Desktop + the WhatsApp gateway container
 │   ├── pre_commit_privacy_check.mjs   # Blocks commits containing your real phone/email
 │   └── install_git_hooks.bat          # Installs the privacy check as .git/hooks/pre-commit
@@ -194,7 +211,7 @@ This is a **fork/derivative work**, not original code from scratch. The pieces b
 | [go-whatsapp-web-multidevice](https://github.com/aldinokemal/go-whatsapp-web-multidevice) | Aldino Kemal | MIT | Self-hosted WhatsApp gateway (runs in Docker, unmodified) that `tools/offline_scraper.mjs` talks to for notifications — not bundled in this repo, run as a separate service. |
 | [Claude Code](https://claude.com/claude-code) | Anthropic | Proprietary (referenced, not redistributed) | The agent this whole workflow runs inside of. |
 
-**New work added in this fork** (not part of upstream): `tools/offline_scraper.mjs`, `tools/run_offline_scraper.bat`, `tools/start_whatsapp_gateway.bat`, the WhatsApp notification integration, the browser dashboard (`tools/dashboard.html`, `tools/dashboard_server.mjs`, `tools/scraper_config_defaults.mjs`, `tools/open_dashboard.bat`), `.env`/`.env.example`, and all personal profile content under `CLAUDE.md` and `.claude/skills/job-application-assistant/`.
+**New work added in this fork** (not part of upstream): `tools/offline_scraper.mjs`, `tools/run_offline_scraper.bat`, `tools/start_whatsapp_gateway.bat`, the WhatsApp notification integration, the browser dashboard (`tools/dashboard.html`, `tools/dashboard_server.mjs`, `tools/scraper_config_defaults.mjs`, `tools/open_dashboard.bat`, `tools/build_dashboard_exe.bat`), `.env`/`.env.example`, and all personal profile content under `CLAUDE.md` and `.claude/skills/job-application-assistant/`.
 
 ## License
 

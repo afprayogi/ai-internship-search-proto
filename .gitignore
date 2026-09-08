@@ -2,6 +2,10 @@
 node_modules/
 bun.lock
 
+# Compiled dashboard executable (build artifact - rebuild with
+# tools\build_dashboard_exe.bat, don't commit; ~80-100MB, embeds the Bun runtime)
+tools/*.exe
+
 # Local secrets/config (WhatsApp gateway credentials, phone number, etc.)
 .env
 

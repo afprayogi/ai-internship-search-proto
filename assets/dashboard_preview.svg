@@ -1,0 +1,132 @@
+<svg viewBox="0 0 1200 860" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, system-ui, sans-serif">
+  <rect width="1200" height="860" fill="#f3f4f6"/>
+
+  <!-- header -->
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#111827">🔍 Job Search Dashboard</text>
+  <text x="40" y="76" font-size="13" fill="#6b7280">Last updated: 9/9/2026, 12:52 AM</text>
+  <g font-size="13" font-weight="600">
+    <rect x="830" y="28" width="140" height="34" rx="8" fill="#0f172a"/>
+    <text x="900" y="50" fill="#fff" text-anchor="middle">+ Add application</text>
+    <rect x="980" y="28" width="90" height="34" rx="8" fill="#fff" stroke="#e5e7eb"/>
+    <text x="1025" y="50" fill="#111827" text-anchor="middle">Import CSV</text>
+    <rect x="1080" y="28" width="90" height="34" rx="8" fill="#fff" stroke="#e5e7eb"/>
+    <text x="1125" y="50" fill="#111827" text-anchor="middle">Export CSV</text>
+  </g>
+
+  <!-- server banner -->
+  <rect x="40" y="94" width="1130" height="34" rx="8" fill="#fff" stroke="#e5e7eb"/>
+  <circle cx="60" cy="111" r="4" fill="#22c55e"/>
+  <text x="74" y="115" font-size="12" fill="#374151">Connected to the local dashboard server - scraping and disk sync are live.</text>
+
+  <!-- scraped postings card -->
+  <rect x="40" y="144" width="1130" height="260" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+  <text x="64" y="176" font-size="17" font-weight="700" fill="#111827">🕵️ Scraped postings</text>
+  <text x="64" y="196" font-size="12" fill="#6b7280">1,527 postings on file · via LinkedIn + JobStreet (tools/offline_scraper.mjs)</text>
+  <rect x="890" y="160" width="120" height="30" rx="8" fill="#fff" stroke="#e5e7eb"/>
+  <text x="950" y="180" font-size="12" font-weight="600" text-anchor="middle" fill="#111827">⚙️ Search settings</text>
+  <rect x="1020" y="160" width="130" height="30" rx="8" fill="#0f172a"/>
+  <text x="1085" y="180" font-size="12" font-weight="600" text-anchor="middle" fill="#fff">▶ Run scraper now</text>
+
+  <rect x="64" y="206" width="1080" height="28" rx="8" fill="#fff" stroke="#e5e7eb"/>
+  <text x="76" y="224" font-size="12" fill="#9ca3af">Search title, company, or location...</text>
+
+  <g font-size="12" fill="#374151">
+    <text x="64" y="256" fill="#6b7280" font-weight="600">Found</text>
+    <text x="140" y="256" fill="#6b7280" font-weight="600">Portal</text>
+    <text x="220" y="256" fill="#6b7280" font-weight="600">Title</text>
+    <text x="500" y="256" fill="#6b7280" font-weight="600">Company</text>
+    <text x="700" y="256" fill="#6b7280" font-weight="600">Location</text>
+    <text x="950" y="256" fill="#6b7280" font-weight="600">Tier</text>
+    <line x1="64" y1="264" x2="1144" y2="264" stroke="#e5e7eb" stroke-width="2"/>
+
+    <text x="64" y="290">2026-09-09</text><text x="140" y="290">linkedin</text><text x="220" y="290">AI Engineer Intern</text><text x="500" y="290">Contoh Teknologi</text><text x="700" y="290">Jakarta, Indonesia</text><text x="950" y="290">acceptable</text>
+    <line x1="64" y1="300" x2="1144" y2="300" stroke="#f3f4f6"/>
+    <text x="64" y="322">2026-09-09</text><text x="140" y="322">jobstreet</text><text x="220" y="322">Embedded Systems Intern</text><text x="500" y="322">PT Industri Otomasi</text><text x="700" y="322">Surabaya, Indonesia</text><text x="950" y="322" fill="#16a34a" font-weight="600">ideal</text>
+    <line x1="64" y1="332" x2="1144" y2="332" stroke="#f3f4f6"/>
+    <text x="64" y="354">2026-09-08</text><text x="140" y="354">linkedin</text><text x="220" y="354">IoT Engineer Intern</text><text x="500" y="354">Startup Sensorindo</text><text x="700" y="354">Bandung, Indonesia</text><text x="950" y="354">acceptable</text>
+    <line x1="64" y1="364" x2="1144" y2="364" stroke="#f3f4f6"/>
+    <text x="1090" y="290" fill="#3b82f6">Open</text><text x="1090" y="322" fill="#3b82f6">Open</text><text x="1090" y="354" fill="#3b82f6">Open</text>
+  </g>
+
+  <!-- stat cards -->
+  <g font-size="0">
+    <!-- shared card template values -->
+  </g>
+  <g>
+    <!-- Total -->
+    <rect x="40" y="428" width="176" height="76" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+    <rect x="40" y="428" width="4" height="76" fill="#0f172a"/>
+    <text x="58" y="466" font-size="24" font-weight="700" fill="#111827">6</text>
+    <text x="58" y="486" font-size="11" fill="#6b7280">Total applications</text>
+    <!-- Active -->
+    <rect x="228" y="428" width="176" height="76" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+    <rect x="228" y="428" width="4" height="76" fill="#3b82f6"/>
+    <text x="246" y="466" font-size="24" font-weight="700" fill="#111827">1</text>
+    <text x="246" y="486" font-size="11" fill="#6b7280">Active</text>
+    <!-- Interview -->
+    <rect x="416" y="428" width="176" height="76" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+    <rect x="416" y="428" width="4" height="76" fill="#f59e0b"/>
+    <text x="434" y="466" font-size="24" font-weight="700" fill="#111827">1</text>
+    <text x="434" y="486" font-size="11" fill="#6b7280">Interview</text>
+    <!-- Offer -->
+    <rect x="604" y="428" width="176" height="76" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+    <rect x="604" y="428" width="4" height="76" fill="#8b5cf6"/>
+    <text x="622" y="466" font-size="24" font-weight="700" fill="#111827">1</text>
+    <text x="622" y="486" font-size="11" fill="#6b7280">Offer</text>
+    <!-- Hired -->
+    <rect x="792" y="428" width="176" height="76" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+    <rect x="792" y="428" width="4" height="76" fill="#22c55e"/>
+    <text x="810" y="466" font-size="24" font-weight="700" fill="#111827">1</text>
+    <text x="810" y="486" font-size="11" fill="#6b7280">Hired</text>
+    <!-- Rejected/Closed -->
+    <rect x="980" y="428" width="190" height="76" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+    <rect x="980" y="428" width="4" height="76" fill="#ef4444"/>
+    <text x="998" y="466" font-size="24" font-weight="700" fill="#111827">2</text>
+    <text x="998" y="486" font-size="11" fill="#6b7280">Rejected/Closed</text>
+  </g>
+
+  <!-- charts row -->
+  <rect x="40" y="524" width="555" height="300" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+  <text x="64" y="556" font-size="15" font-weight="700" fill="#111827">Status breakdown</text>
+  <text x="64" y="576" font-size="12" fill="#6b7280">6 total · 40% rejection rate (of resolved)</text>
+  <g transform="translate(190,700)">
+    <circle r="80" fill="none" stroke="#e5e7eb" stroke-width="32"/>
+    <circle r="80" fill="none" stroke="#3b82f6" stroke-width="32" stroke-dasharray="167 335" stroke-dashoffset="0" transform="rotate(-90)"/>
+    <circle r="80" fill="none" stroke="#f59e0b" stroke-width="32" stroke-dasharray="84 335" stroke-dashoffset="-167" transform="rotate(-90)"/>
+    <circle r="80" fill="none" stroke="#8b5cf6" stroke-width="32" stroke-dasharray="84 335" stroke-dashoffset="-251" transform="rotate(-90)"/>
+    <circle r="80" fill="none" stroke="#22c55e" stroke-width="32" stroke-dasharray="84 335" stroke-dashoffset="-335" transform="rotate(-90)"/>
+    <circle r="80" fill="none" stroke="#ef4444" stroke-width="32" stroke-dasharray="167 335" stroke-dashoffset="-419" transform="rotate(-90)"/>
+    <text y="-4" font-size="26" font-weight="700" text-anchor="middle" fill="#111827">6</text>
+    <text y="16" font-size="11" text-anchor="middle" fill="#6b7280">total</text>
+  </g>
+  <g font-size="11" fill="#374151">
+    <circle cx="380" cy="660" r="5" fill="#3b82f6"/><text x="392" y="664">Active (1)</text>
+    <circle cx="380" cy="682" r="5" fill="#f59e0b"/><text x="392" y="686">Interview (1)</text>
+    <circle cx="480" cy="660" r="5" fill="#8b5cf6"/><text x="492" y="664">Offer (1)</text>
+    <circle cx="480" cy="682" r="5" fill="#22c55e"/><text x="492" y="686">Hired (1)</text>
+    <circle cx="380" cy="704" r="5" fill="#ef4444"/><text x="392" y="708">Rejected/Closed (2)</text>
+  </g>
+
+  <rect x="610" y="524" width="555" height="300" rx="10" fill="#fff" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.08))"/>
+  <text x="634" y="556" font-size="15" font-weight="700" fill="#111827">By sector</text>
+  <text x="634" y="576" font-size="12" fill="#6b7280">Applications per sector</text>
+  <g font-size="12" fill="#374151">
+    <text x="634" y="616">Technology</text>
+    <rect x="740" y="602" width="200" height="20" rx="4" fill="#3b82f6"/>
+    <text x="950" y="616">2</text>
+
+    <text x="634" y="652">Manufacturing</text>
+    <rect x="740" y="638" width="200" height="20" rx="4" fill="#f59e0b"/>
+    <text x="950" y="652">2</text>
+
+    <text x="634" y="688">Fintech</text>
+    <rect x="740" y="674" width="100" height="20" rx="4" fill="#8b5cf6"/>
+    <text x="850" y="688">1</text>
+
+    <text x="634" y="724">Energy</text>
+    <rect x="740" y="710" width="100" height="20" rx="4" fill="#22c55e"/>
+    <text x="850" y="724">1</text>
+  </g>
+
+  <text x="600" y="850" font-size="12" text-anchor="middle" fill="#9ca3af">Illustrative preview - open tools\open_dashboard.bat to see it live with your own data</text>
+</svg>
