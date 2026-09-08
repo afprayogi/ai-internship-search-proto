@@ -51,6 +51,8 @@ const TRACKER_PATH = path.join(ROOT, 'job_search_tracker.csv');
 
 const TRACKER_FIELDS = ['date', 'company', 'sector', 'role', 'role_type', 'channel', 'status',
   'contact_person', 'fit_rating', 'notes', 'cv_file', 'cover_letter_file', 'source'];
+const SCRAPED_FIELDS = ['found_date', 'portal', 'title', 'company', 'location', 'location_tier',
+  'employment_type_hint', 'salary', 'posted_date', 'description', 'url'];
 
 // ---------------------------------------------------------------------------
 // CSV helpers (mirrors the parser/escaper in dashboard.html - kept in sync by
@@ -201,6 +203,25 @@ function saveConfig(partial) {
 }
 
 // ---------------------------------------------------------------------------
+// Expired-postings cleanup - offline_jobs_log.csv is append-only by design
+// (it's the scraper's permanent "everything ever found" record), so it only
+// ever grows. This is the one place that actually deletes rows from it:
+// anything older than maxAgeDays (by found_date) gets dropped for good.
+// Rows with an unparseable found_date are kept rather than guessed at.
+// ---------------------------------------------------------------------------
+function cleanupExpiredPostings(maxAgeDays) {
+  if (!existsSync(SCRAPED_LOG_PATH)) return { removed: 0, remaining: 0 };
+  const records = csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS);
+  const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+  const kept = records.filter((r) => {
+    const t = Date.parse(r.found_date);
+    return isNaN(t) || t >= cutoff;
+  });
+  writeFileSync(SCRAPED_LOG_PATH, recordsToCsv(kept, SCRAPED_FIELDS), 'utf-8');
+  return { removed: records.length - kept.length, remaining: kept.length };
+}
+
+// ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
 function json(data, init) {
@@ -226,6 +247,15 @@ const server = Bun.serve({
       if (!existsSync(SCRAPED_LOG_PATH)) return json([]);
       const text = readFileSync(SCRAPED_LOG_PATH, 'utf-8');
       return json(csvToRecords(text));
+    }
+
+    if (url.pathname === '/api/scraped/cleanup' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      const maxAgeDays = Number(body.maxAgeDays);
+      if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0) {
+        return json({ error: 'maxAgeDays must be a non-negative number' }, { status: 400 });
+      }
+      return json(cleanupExpiredPostings(maxAgeDays));
     }
 
     if (url.pathname === '/api/config' && req.method === 'GET') {

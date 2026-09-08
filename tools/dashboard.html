@@ -163,6 +163,33 @@
   .log-box.show { display: block; }
   textarea.keyword-list { min-height: 220px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; }
   .settings-help { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--border); }
+  .tab-btn {
+    box-shadow: none; border: none; border-bottom: 2px solid transparent; border-radius: 0;
+    background: transparent; padding: 10px 16px; margin-bottom: -2px; color: var(--text-muted);
+  }
+  .tab-btn:hover { background: transparent; color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+  .tab-panel[hidden] { display: none; }
+
+  .checkbox-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); white-space: nowrap; }
+  .checkbox-label input { width: auto; }
+  .expiry-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted);
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .expiry-bar input[type="number"] { width: 64px; font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); }
+  tr.expired-row { opacity: 0.55; }
+  .expired-badge {
+    display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10px;
+    font-weight: 700; background: #f3f4f6; color: var(--text-muted); border: 1px solid var(--border);
+  }
+
+  .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; font-size: 13px; flex-wrap: wrap; }
+  .pagination button { padding: 6px 12px; box-shadow: none; }
+  .pagination button[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .pagination .page-info { color: var(--text-muted); padding: 0 6px; }
 </style>
 </head>
 <body>
@@ -183,63 +210,82 @@
 
   <div class="server-banner" id="serverBanner"><span class="dot"></span><span id="serverBannerText">Checking for local server...</span></div>
 
-  <div class="section-card">
-    <div class="section-head">
-      <div>
-        <h2>🕵️ Scraped postings</h2>
-        <div class="sub" id="scrapedSub">via LinkedIn + JobStreet (tools/offline_scraper.mjs)</div>
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn active" id="tabBtnScraped" role="tab" aria-selected="true">🕵️ Scraped postings</button>
+    <button class="tab-btn" id="tabBtnTracker" role="tab" aria-selected="false">📋 My applications</button>
+  </div>
+
+  <div id="tabPanelScraped" class="tab-panel">
+    <div class="section-card">
+      <div class="section-head">
+        <div>
+          <h2>🕵️ Scraped postings</h2>
+          <div class="sub" id="scrapedSub">via LinkedIn + JobStreet (tools/offline_scraper.mjs)</div>
+        </div>
+        <div class="actions">
+          <button id="settingsBtn">⚙️ Search settings</button>
+          <button class="primary" id="runScraperBtn">▶ Run scraper now</button>
+        </div>
       </div>
-      <div class="actions">
-        <button id="settingsBtn">⚙️ Search settings</button>
-        <button class="primary" id="runScraperBtn">▶ Run scraper now</button>
+      <div class="log-box" id="logBox"></div>
+      <div class="table-toolbar" style="margin-top:14px;">
+        <input type="text" id="scrapedSearch" placeholder="Search title, company, or location...">
+        <select id="scrapedPortalFilter"><option value="">All portals</option></select>
+        <select id="scrapedTierFilter"><option value="">All location tiers</option></select>
+        <label class="checkbox-label"><input type="checkbox" id="hideExpiredCheck" checked> Hide expired</label>
+      </div>
+      <div class="expiry-bar">
+        <span>Postings older than</span>
+        <input type="number" id="maxAgeDays" min="1" max="365" value="30">
+        <span>days count as expired.</span>
+        <button class="danger" id="cleanupBtn">🗑️ Delete expired postings now</button>
+        <span class="settings-help" id="expiryHint"></span>
+      </div>
+      <div id="scrapedTableWrap"></div>
+      <div class="pagination" id="scrapedPagination"></div>
+    </div>
+  </div>
+
+  <div id="tabPanelTracker" class="tab-panel" hidden>
+    <div class="stats" id="statCards"></div>
+
+    <div class="charts">
+      <div class="chart-card">
+        <h3>Status breakdown</h3>
+        <p class="sub" id="statusSub">&nbsp;</p>
+        <div id="statusChart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>By sector</h3>
+        <p class="sub">Applications per sector</p>
+        <div id="sectorChart"></div>
       </div>
     </div>
-    <div class="log-box" id="logBox"></div>
-    <div class="table-toolbar" style="margin-top:14px;">
-      <input type="text" id="scrapedSearch" placeholder="Search title, company, or location...">
-      <select id="scrapedPortalFilter"><option value="">All portals</option></select>
-      <select id="scrapedTierFilter"><option value="">All location tiers</option></select>
+    <div class="charts">
+      <div class="chart-card">
+        <h3>By channel</h3>
+        <p class="sub">Online / referral / other</p>
+        <div id="channelChart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Application funnel</h3>
+        <p class="sub" id="funnelSub">&nbsp;</p>
+        <div id="funnelChart"></div>
+      </div>
     </div>
-    <div id="scrapedTableWrap"></div>
-  </div>
 
-  <div class="stats" id="statCards"></div>
-
-  <div class="charts">
-    <div class="chart-card">
-      <h3>Status breakdown</h3>
-      <p class="sub" id="statusSub">&nbsp;</p>
-      <div id="statusChart"></div>
+    <div class="table-card">
+      <div class="section-head">
+        <div><h2>📋 My applications</h2></div>
+      </div>
+      <div class="table-toolbar">
+        <input type="text" id="searchInput" placeholder="Search company, role, or sector...">
+        <select id="statusFilter"><option value="">All statuses</option></select>
+        <select id="sectorFilter"><option value="">All sectors</option></select>
+      </div>
+      <div id="tableWrap"></div>
+      <div class="pagination" id="trackerPagination"></div>
     </div>
-    <div class="chart-card">
-      <h3>By sector</h3>
-      <p class="sub">Applications per sector</p>
-      <div id="sectorChart"></div>
-    </div>
-  </div>
-  <div class="charts">
-    <div class="chart-card">
-      <h3>By channel</h3>
-      <p class="sub">Online / referral / other</p>
-      <div id="channelChart"></div>
-    </div>
-    <div class="chart-card">
-      <h3>Application funnel</h3>
-      <p class="sub" id="funnelSub">&nbsp;</p>
-      <div id="funnelChart"></div>
-    </div>
-  </div>
-
-  <div class="table-card">
-    <div class="section-head">
-      <div><h2>📋 My applications</h2></div>
-    </div>
-    <div class="table-toolbar">
-      <input type="text" id="searchInput" placeholder="Search company, role, or sector...">
-      <select id="statusFilter"><option value="">All statuses</option></select>
-      <select id="sectorFilter"><option value="">All sectors</option></select>
-    </div>
-    <div id="tableWrap"></div>
   </div>
 
   <footer id="footerLine">Generated by Claude Code · ai-job-search</footer>
@@ -403,6 +449,27 @@
 
   var storageWarned = false;
   var serverMode = false;
+
+  // ---------- pagination ----------
+  var PAGE_SIZE = 25;
+  var trackerPage = 1;
+  var scrapedPage = 1;
+
+  function paginationControls(containerId, totalItems, currentPage, onChange) {
+    var totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    var el = document.getElementById(containerId);
+    if (totalItems <= PAGE_SIZE) { el.innerHTML = ""; return currentPage; }
+    el.innerHTML =
+      '<button id="' + containerId + '_prev"' + (currentPage <= 1 ? " disabled" : "") + '>‹ Prev</button>' +
+      '<span class="page-info">Page ' + currentPage + " of " + totalPages + " (" + totalItems + " total)</span>" +
+      '<button id="' + containerId + '_next"' + (currentPage >= totalPages ? " disabled" : "") + ">Next ›</button>";
+    var prevBtn = document.getElementById(containerId + "_prev");
+    var nextBtn = document.getElementById(containerId + "_next");
+    if (prevBtn) prevBtn.addEventListener("click", function () { onChange(currentPage - 1); });
+    if (nextBtn) nextBtn.addEventListener("click", function () { onChange(currentPage + 1); });
+    return currentPage;
+  }
   function load() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -622,10 +689,18 @@
     if (!filtered.length) {
       wrap.innerHTML = '<div class="empty-state">' + (rows.length ? "No applications match these filters." :
         "No applications yet. Click “+ Add application” to get started.") + '</div>';
+      document.getElementById("trackerPagination").innerHTML = "";
       return;
     }
 
-    var body = filtered.map(function (r) {
+    trackerPage = paginationControls("trackerPagination", filtered.length, trackerPage, function (p) {
+      trackerPage = p;
+      renderTable();
+    });
+    var pageStart = (trackerPage - 1) * PAGE_SIZE;
+    var pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
+    var body = pageRows.map(function (r) {
       var idx = data.indexOf(r);
       var bucket = bucketOf(r.status);
       var notes = r.notes || "";
@@ -751,9 +826,10 @@
   });
 
   // ---------- filters ----------
-  document.getElementById("searchInput").addEventListener("input", renderTable);
-  document.getElementById("statusFilter").addEventListener("change", renderTable);
-  document.getElementById("sectorFilter").addEventListener("change", renderTable);
+  function onTrackerFilterChange() { trackerPage = 1; renderTable(); }
+  document.getElementById("searchInput").addEventListener("input", onTrackerFilterChange);
+  document.getElementById("statusFilter").addEventListener("change", onTrackerFilterChange);
+  document.getElementById("sectorFilter").addEventListener("change", onTrackerFilterChange);
 
   // ---------- CSV export ----------
   function csvEscape(v) {
@@ -877,17 +953,35 @@
     document.getElementById("runScraperBtn").disabled = !online;
   }
 
+  function getMaxAgeDays() {
+    var v = parseInt(document.getElementById("maxAgeDays").value, 10);
+    return (Number.isFinite(v) && v > 0) ? v : 30;
+  }
+
+  function isExpiredPosting(r, maxAgeDays) {
+    var t = Date.parse(r.found_date);
+    if (isNaN(t)) return false;
+    return (Date.now() - t) / 86400000 > maxAgeDays;
+  }
+
   function renderScrapedTable() {
     var wrap = document.getElementById("scrapedTableWrap");
     if (!serverMode) {
       wrap.innerHTML = '<div class="empty-state">Start the dashboard via tools\\open_dashboard.bat to search for new internships and see results here.</div>';
+      document.getElementById("scrapedPagination").innerHTML = "";
       return;
     }
     var search = document.getElementById("scrapedSearch").value.trim().toLowerCase();
     var portalF = document.getElementById("scrapedPortalFilter").value;
     var tierF = document.getElementById("scrapedTierFilter").value;
+    var hideExpired = document.getElementById("hideExpiredCheck").checked;
+    var maxAgeDays = getMaxAgeDays();
 
+    var expiredCount = 0;
     var rows = scrapedData.filter(function (r) {
+      var expired = isExpiredPosting(r, maxAgeDays);
+      if (expired) expiredCount++;
+      if (hideExpired && expired) return false;
       if (portalF && r.portal !== portalF) return false;
       if (tierF && r.location_tier !== tierF) return false;
       if (search) {
@@ -899,17 +993,29 @@
       return String(b.found_date || "").localeCompare(String(a.found_date || ""));
     });
 
+    document.getElementById("expiryHint").textContent =
+      expiredCount > 0 ? expiredCount + " posting(s) currently older than " + maxAgeDays + " days" : "";
+
     if (!rows.length) {
       wrap.innerHTML = '<div class="empty-state">' + (scrapedData.length
         ? "No postings match these filters."
         : 'No postings scraped yet. Click "▶ Run scraper now" above.') + '</div>';
+      document.getElementById("scrapedPagination").innerHTML = "";
       return;
     }
 
-    var body = rows.map(function (r, i) {
+    scrapedPage = paginationControls("scrapedPagination", rows.length, scrapedPage, function (p) {
+      scrapedPage = p;
+      renderScrapedTable();
+    });
+    var pageStart = (scrapedPage - 1) * PAGE_SIZE;
+    var pageRows = rows.slice(pageStart, pageStart + PAGE_SIZE);
+
+    var body = pageRows.map(function (r, i) {
       var salary = r.salary || "—";
-      return "<tr>" +
-        "<td>" + escapeHtml(r.found_date || "—") + "</td>" +
+      var expired = isExpiredPosting(r, maxAgeDays);
+      return '<tr class="' + (expired ? "expired-row" : "") + '">' +
+        "<td>" + escapeHtml(r.found_date || "—") + (expired ? '<span class="expired-badge">expired</span>' : "") + "</td>" +
         "<td>" + escapeHtml(r.portal || "—") + "</td>" +
         "<td>" + escapeHtml(r.title || "—") + "</td>" +
         "<td>" + escapeHtml(r.company || "—") + "</td>" +
@@ -928,7 +1034,7 @@
 
     wrap.querySelectorAll("[data-track]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        var r = rows[parseInt(btn.getAttribute("data-track"), 10)];
+        var r = pageRows[parseInt(btn.getAttribute("data-track"), 10)];
         openModal(null, {
           company: r.company, role: r.title, source: r.url,
           channel: "online", notes: "Found via offline scraper (" + r.portal + ")",
@@ -959,9 +1065,30 @@
     }).catch(function () { /* server briefly unreachable - keep last known table */ });
   }
 
-  document.getElementById("scrapedSearch").addEventListener("input", renderScrapedTable);
-  document.getElementById("scrapedPortalFilter").addEventListener("change", renderScrapedTable);
-  document.getElementById("scrapedTierFilter").addEventListener("change", renderScrapedTable);
+  function onScrapedFilterChange() { scrapedPage = 1; renderScrapedTable(); }
+  document.getElementById("scrapedSearch").addEventListener("input", onScrapedFilterChange);
+  document.getElementById("scrapedPortalFilter").addEventListener("change", onScrapedFilterChange);
+  document.getElementById("scrapedTierFilter").addEventListener("change", onScrapedFilterChange);
+  document.getElementById("hideExpiredCheck").addEventListener("change", onScrapedFilterChange);
+  document.getElementById("maxAgeDays").addEventListener("input", onScrapedFilterChange);
+
+  document.getElementById("cleanupBtn").addEventListener("click", function () {
+    if (!serverMode) { toast("Could not reach the local server"); return; }
+    var maxAgeDays = getMaxAgeDays();
+    var expiredCount = scrapedData.filter(function (r) { return isExpiredPosting(r, maxAgeDays); }).length;
+    if (!expiredCount) { toast("No expired postings to delete"); return; }
+    if (!confirm("Permanently delete " + expiredCount + " posting(s) older than " + maxAgeDays +
+        " days from job_scraper/offline_jobs_log.csv? This can't be undone.")) return;
+    fetch("/api/scraped/cleanup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ maxAgeDays: maxAgeDays }),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (res.error) { toast(res.error); return; }
+      toast("Deleted " + res.removed + " expired posting(s), " + res.remaining + " remaining");
+      scrapedPage = 1;
+      loadScraped();
+    }).catch(function () { toast("Could not reach the local server"); });
+  });
 
   // ---------- settings modal ----------
   var settingsBackdrop = document.getElementById("settingsBackdrop");
@@ -1046,6 +1173,29 @@
       btn.textContent = "▶ Run scraper now";
     });
   });
+
+  // ---------- tabs ----------
+  var tabBtnScraped = document.getElementById("tabBtnScraped");
+  var tabBtnTracker = document.getElementById("tabBtnTracker");
+  var tabPanelScraped = document.getElementById("tabPanelScraped");
+  var tabPanelTracker = document.getElementById("tabPanelTracker");
+  function showTab(name) {
+    var scraped = name === "scraped";
+    tabPanelScraped.hidden = !scraped;
+    tabPanelTracker.hidden = scraped;
+    tabBtnScraped.classList.toggle("active", scraped);
+    tabBtnTracker.classList.toggle("active", !scraped);
+    tabBtnScraped.setAttribute("aria-selected", String(scraped));
+    tabBtnTracker.setAttribute("aria-selected", String(!scraped));
+    try { localStorage.setItem(STORAGE_KEY + ".activeTab", name); } catch (e) { /* ignore */ }
+  }
+  tabBtnScraped.addEventListener("click", function () { showTab("scraped"); });
+  tabBtnTracker.addEventListener("click", function () { showTab("tracker"); });
+  (function restoreTab() {
+    var saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY + ".activeTab"); } catch (e) { /* ignore */ }
+    showTab(saved === "tracker" ? "tracker" : "scraped");
+  })();
 
   // ---------- init ----------
   function init() {
