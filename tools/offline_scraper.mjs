@@ -213,7 +213,7 @@ async function fetchJobStreetPage(query, page) {
       company: job.advertiser?.name || '',
       location: locationText,
       date: job.listedAt?.dateTimeUtc ? job.listedAt.dateTimeUtc.slice(0, 10) : '',
-      url: job.id ? `https://jobstreet.com/id/job/${job.id}` : '',
+      url: job.id ? `https://id.jobstreet.com/id/job/${job.id}` : '',
       description: (job.abstract || '').replace(/\s+/g, ' ').trim().slice(0, 200),
       work_type: workType,
       salary: salaryText,
