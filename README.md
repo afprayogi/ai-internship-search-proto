@@ -2,12 +2,15 @@
   <img src="assets/mascot/pip_flight_loop.gif" alt="Pip, the courier bird" width="200">
 </p>
 
-# AI Job Search — Ahmad Fauzan Prayogi's Fork
+# AI Job Search Dashboard
 
-*A Claude Code-powered internship search assistant, extended with an offline scraper and WhatsApp notifications.*
+*An automated internship search assistant for Indonesia — LinkedIn + JobStreet scraping, application tracking, and WhatsApp alerts, powered by Claude Code.*
+
+**Built by [Ahmad Fauzan Prayogi](https://www.linkedin.com/in/ahmad-fauzan-prayogi-39653b1a7/)** — Electrical Automation Engineering student, ITS Surabaya.
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://www.linkedin.com/in/ahmad-fauzan-prayogi-39653b1a7/"><img src="https://img.shields.io/badge/LinkedIn-Ahmad%20Fauzan%20Prayogi-0A66C2?logo=linkedin&logoColor=white" alt="LinkedIn: Ahmad Fauzan Prayogi"></a>
   <img src="https://img.shields.io/badge/runtime-Bun-000000?logo=bun&logoColor=white" alt="Runtime: Bun">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/WhatsApp%20gateway-Docker-2496ED?logo=docker&logoColor=white" alt="WhatsApp gateway: Docker">
@@ -113,7 +116,7 @@ Double-click:
 tools\open_dashboard.bat
 ```
 
-Starts a tiny localhost-only server (`tools/dashboard_server.mjs`, needs Bun) and opens `http://localhost:4870/` — a single-page dashboard covering both halves of the pipeline: **finding** internships and **tracking** applications.
+Starts a tiny localhost-only server (`tools/dashboard_server.mjs`, needs Bun) and opens `http://localhost:4870/` — a two-tab dashboard covering both halves of the pipeline: **finding** internships and **tracking** applications.
 
 <p align="center">
   <img src="assets/dashboard_preview.svg" alt="Job Search Dashboard preview: scraped postings table, stat cards, and status/sector charts" width="820">
@@ -121,13 +124,15 @@ Starts a tiny localhost-only server (`tools/dashboard_server.mjs`, needs Bun) an
   <sub><em>Illustrative preview built from the actual layout/colors — open <code>tools\open_dashboard.bat</code> to see it live with your own data.</em></sub>
 </p>
 
-**Scraped postings** (top of the page):
-- Shows every listing in `job_scraper/offline_jobs_log.csv` — the exact same file `run_offline_scraper.bat` writes to — with search + portal/location-tier filters.
+**🕵️ Scraped postings** tab:
+- Shows every listing in `job_scraper/offline_jobs_log.csv` — the exact same file `run_offline_scraper.bat` writes to — with search + portal/location-tier filters, paginated 25 rows at a time (thousands of postings stay fast to scroll).
 - **▶ Run scraper now** runs `tools/offline_scraper.mjs` directly from the browser and streams its console output live (the same thing you'd see running the `.bat` file, just inside the page). Only one run at a time; a second click while one is running is a no-op, not a duplicate run.
-- **⚙️ Search settings** edits the keyword list, LinkedIn/JobStreet page limits, and ideal/acceptable locations from a form instead of hand-editing `offline_scraper.mjs`. Saved to `job_scraper/scraper_config.json`, which both the dashboard and `run_offline_scraper.bat` read — editing it in one place changes both.
+- **⚙️ Search settings** edits the keyword list, LinkedIn/JobStreet page limits, and ideal/acceptable locations from a form instead of hand-editing `offline_scraper.mjs`. Saved to `job_scraper/scraper_config.json`, which both the dashboard and `run_offline_scraper.bat` read — editing it in one place changes both. Keywords can be saved empty (with a confirmation) if you want to pause searching without losing your location settings.
+- **Expired-postings cleanup** — a "postings older than N days" setting (default 30) flags stale listings with a dimmed row + badge, an optional "Hide expired" filter, and a **🗑️ Delete expired postings now** button that permanently drops them from `offline_jobs_log.csv`. A separate **🗑️ Clear all scraped postings** button wipes the file entirely for a fresh start — `Run scraper now` will simply rediscover anything still live.
+- **🔗 LinkedIn feed login** (optional) — LinkedIn's Jobs API only covers formal job postings, but a lot of Indonesian magang openings get shared as plain feed posts instead. This opens a guided setup for searching those too, using your own already-logged-in LinkedIn session: you copy your own `li_at` session cookie from your browser's DevTools and paste it in — the value goes straight from your browser to your local `.env` file and nowhere else. Doing this is against LinkedIn's Terms of Service and carries real account risk, which the modal states plainly before you enter anything; it's entirely optional and the rest of the dashboard works fully without it.
 - **+ Track** on any posting opens the add-application form prefilled (company, role, source URL, channel) so you review before it's saved — nothing gets added to your tracker without a confirm click.
 
-**My applications** (stat cards, charts, table): add/edit/delete applications by hand, same as before. Every change is saved **immediately to the browser's local storage** first, so nothing is lost if the page or server closes mid-edit; with the server running, each change is *also* written straight to `job_search_tracker.csv` on disk, so `/rank`, `/outcome`, and the scraper's own already-applied filter all see the same data without a manual export step. **Export CSV** / **Import CSV** still work for moving data to/from another machine or merging in an existing tracker (matches by company+role, so re-importing never duplicates rows).
+**📋 My applications** tab (stat cards, charts, table, also paginated): add/edit/delete applications by hand, same as before. Every change is saved **immediately to the browser's local storage** first, so nothing is lost if the page or server closes mid-edit; with the server running, each change is *also* written straight to `job_search_tracker.csv` on disk, so `/rank`, `/outcome`, and the scraper's own already-applied filter all see the same data without a manual export step. **Export CSV** / **Import CSV** still work for moving data to/from another machine or merging in an existing tracker (matches by company+role, so re-importing never duplicates rows).
 
 No Bun, or opened `tools/dashboard.html` directly as a file instead of through the `.bat`? The page detects that (a banner at the top says so) and falls back to tracker-only mode against local storage — scraping and disk sync are simply unavailable until the server's running.
 

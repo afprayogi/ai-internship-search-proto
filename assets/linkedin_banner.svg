@@ -1,0 +1,88 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, system-ui, sans-serif">
+  <rect width="1200" height="630" fill="#0f172a"/>
+
+  <!-- subtle grid texture -->
+  <g opacity="0.06" stroke="#ffffff" stroke-width="1">
+    <line x1="0" y1="140" x2="1200" y2="140"/>
+    <line x1="0" y1="280" x2="1200" y2="280"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="0" y1="560" x2="1200" y2="560"/>
+  </g>
+
+  <!-- headline -->
+  <text x="64" y="96" font-size="34" font-weight="700" fill="#ffffff">🔍 AI Job Search Dashboard</text>
+  <text x="64" y="132" font-size="18" fill="#94a3b8">Automated internship discovery + application tracking</text>
+
+  <!-- tags -->
+  <g font-size="13" font-weight="700">
+    <rect x="64" y="156" width="96" height="28" rx="14" fill="#1e293b"/>
+    <text x="112" y="174" fill="#e2e8f0" text-anchor="middle">Claude Code</text>
+    <rect x="170" y="156" width="70" height="28" rx="14" fill="#1e293b"/>
+    <text x="205" y="174" fill="#e2e8f0" text-anchor="middle">Bun</text>
+    <rect x="250" y="156" width="120" height="28" rx="14" fill="#1e293b"/>
+    <text x="310" y="174" fill="#e2e8f0" text-anchor="middle">LinkedIn + JobStreet</text>
+  </g>
+
+  <!-- mini dashboard mockup card -->
+  <rect x="64" y="216" width="1072" height="300" rx="14" fill="#ffffff"/>
+
+  <!-- mockup header -->
+  <text x="96" y="256" font-size="18" font-weight="700" fill="#111827">Job Search Dashboard</text>
+  <circle cx="1076" cy="250" r="5" fill="#22c55e"/>
+  <text x="1057" y="255" font-size="11" fill="#6b7280" text-anchor="end">live</text>
+
+  <!-- stat cards -->
+  <g>
+    <rect x="96" y="276" width="150" height="66" rx="8" fill="#f3f4f6"/>
+    <rect x="96" y="276" width="4" height="66" fill="#0f172a"/>
+    <text x="112" y="308" font-size="22" font-weight="700" fill="#111827">1,527</text>
+    <text x="112" y="326" font-size="11" fill="#6b7280">Postings found</text>
+
+    <rect x="258" y="276" width="150" height="66" rx="8" fill="#f3f4f6"/>
+    <rect x="258" y="276" width="4" height="66" fill="#3b82f6"/>
+    <text x="274" y="308" font-size="22" font-weight="700" fill="#111827">12</text>
+    <text x="274" y="326" font-size="11" fill="#6b7280">Applied</text>
+
+    <rect x="420" y="276" width="150" height="66" rx="8" fill="#f3f4f6"/>
+    <rect x="420" y="276" width="4" height="66" fill="#f59e0b"/>
+    <text x="436" y="308" font-size="22" font-weight="700" fill="#111827">4</text>
+    <text x="436" y="326" font-size="11" fill="#6b7280">Interview</text>
+
+    <rect x="582" y="276" width="150" height="66" rx="8" fill="#f3f4f6"/>
+    <rect x="582" y="276" width="4" height="66" fill="#22c55e"/>
+    <text x="598" y="308" font-size="22" font-weight="700" fill="#111827">1</text>
+    <text x="598" y="326" font-size="11" fill="#6b7280">Hired</text>
+  </g>
+
+  <!-- doughnut -->
+  <g transform="translate(830,342)">
+    <circle r="58" fill="none" stroke="#3b82f6" stroke-width="24" stroke-dasharray="120 244" transform="rotate(-90)"/>
+    <circle r="58" fill="none" stroke="#f59e0b" stroke-width="24" stroke-dasharray="60 244" stroke-dashoffset="-120" transform="rotate(-90)"/>
+    <circle r="58" fill="none" stroke="#22c55e" stroke-width="24" stroke-dasharray="30 244" stroke-dashoffset="-180" transform="rotate(-90)"/>
+    <circle r="58" fill="none" stroke="#ef4444" stroke-width="24" stroke-dasharray="34 244" stroke-dashoffset="-210" transform="rotate(-90)"/>
+  </g>
+
+  <!-- mini bar chart -->
+  <g font-size="12" fill="#374151">
+    <text x="936" y="298">Manufacturing</text>
+    <rect x="936" y="304" width="110" height="14" rx="3" fill="#3b82f6"/>
+    <text x="936" y="336">Technology</text>
+    <rect x="936" y="342" width="80" height="14" rx="3" fill="#f59e0b"/>
+    <text x="936" y="374">Energy</text>
+    <rect x="936" y="380" width="50" height="14" rx="3" fill="#22c55e"/>
+  </g>
+
+  <text x="96" y="470" font-size="13" fill="#6b7280">Scrapes LinkedIn + JobStreet automatically, tracks every application, cleans up expired postings — all offline.</text>
+
+  <!-- footer / author -->
+  <g transform="translate(64, 552)">
+    <rect width="44" height="44" rx="8" fill="#ffffff"/>
+    <g transform="translate(9,9)">
+      <path fill="#0A66C2" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.15 1.45-2.15 2.94v5.67H9.34V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13M7.12 20.45H3.56V9h3.56z"/>
+    </g>
+    <text x="58" y="18" font-size="16" font-weight="700" fill="#ffffff">Ahmad Fauzan Prayogi</text>
+    <text x="58" y="38" font-size="13" fill="#94a3b8">Electrical Automation Engineering · ITS Surabaya</text>
+  </g>
+
+  <text x="1136" y="580" font-size="12" fill="#64748b" text-anchor="end">github.com/afprayogi</text>
+</svg>

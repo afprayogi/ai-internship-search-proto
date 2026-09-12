@@ -48,6 +48,7 @@ const SCRAPER_PATH = path.join(__dirname, 'offline_scraper.mjs');
 const SCRAPED_LOG_PATH = path.join(ROOT, 'job_scraper', 'offline_jobs_log.csv');
 const CONFIG_PATH = path.join(ROOT, 'job_scraper', 'scraper_config.json');
 const TRACKER_PATH = path.join(ROOT, 'job_search_tracker.csv');
+const ENV_PATH = path.join(ROOT, '.env');
 
 const TRACKER_FIELDS = ['date', 'company', 'sector', 'role', 'role_type', 'channel', 'status',
   'contact_person', 'fit_rating', 'notes', 'cv_file', 'cover_letter_file', 'source'];
@@ -203,6 +204,43 @@ function saveConfig(partial) {
 }
 
 // ---------------------------------------------------------------------------
+// .env read/write - used only for LINKEDIN_LI_AT_COOKIE right now. Never
+// returns the stored value to the browser, only whether it's set - the value
+// travels browser -> this local server -> disk and nowhere else.
+// ---------------------------------------------------------------------------
+function readEnvText() {
+  return existsSync(ENV_PATH) ? readFileSync(ENV_PATH, 'utf-8') : '';
+}
+
+function getEnvValue(text, key) {
+  const re = new RegExp('^' + key + '=(.*)$', 'm');
+  const m = text.match(re);
+  return m ? m[1].trim() : '';
+}
+
+function setEnvValue(text, key, value) {
+  const re = new RegExp('^' + key + '=.*$', 'm');
+  const line = key + '=' + value;
+  if (re.test(text)) return text.replace(re, line);
+  const sep = text.length && !text.endsWith('\n') ? '\n' : '';
+  return text + sep + line + '\n';
+}
+
+function linkedinCookieStatus() {
+  return { set: getEnvValue(readEnvText(), 'LINKEDIN_LI_AT_COOKIE').length > 0 };
+}
+
+function saveLinkedinCookie(cookie) {
+  writeFileSync(ENV_PATH, setEnvValue(readEnvText(), 'LINKEDIN_LI_AT_COOKIE', cookie), 'utf-8');
+  return { ok: true };
+}
+
+function clearLinkedinCookie() {
+  writeFileSync(ENV_PATH, setEnvValue(readEnvText(), 'LINKEDIN_LI_AT_COOKIE', ''), 'utf-8');
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Expired-postings cleanup - offline_jobs_log.csv is append-only by design
 // (it's the scraper's permanent "everything ever found" record), so it only
 // ever grows. This is the one place that actually deletes rows from it:
@@ -255,6 +293,19 @@ const server = Bun.serve({
       if (!existsSync(SCRAPED_LOG_PATH)) return json([]);
       const text = readFileSync(SCRAPED_LOG_PATH, 'utf-8');
       return json(csvToRecords(text));
+    }
+
+    if (url.pathname === '/api/linkedin/cookie/status' && req.method === 'GET') {
+      return json(linkedinCookieStatus());
+    }
+    if (url.pathname === '/api/linkedin/cookie' && req.method === 'POST') {
+      const body = await req.json().catch(() => null);
+      const cookie = body && typeof body.cookie === 'string' ? body.cookie.trim() : '';
+      if (!cookie) return json({ error: 'cookie value required' }, { status: 400 });
+      return json(saveLinkedinCookie(cookie));
+    }
+    if (url.pathname === '/api/linkedin/cookie' && req.method === 'DELETE') {
+      return json(clearLinkedinCookie());
     }
 
     if (url.pathname === '/api/scraped/clear' && req.method === 'POST') {
