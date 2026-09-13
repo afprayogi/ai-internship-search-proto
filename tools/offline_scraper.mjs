@@ -67,7 +67,7 @@ const IDEAL_LOCATIONS = CONFIG.idealLocations;
 const ACCEPTABLE_LOCATIONS = CONFIG.acceptableLocations;
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-const CSV_HEADER = 'found_date,portal,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,url\n';
+const CSV_HEADER = 'found_date,portal,source_type,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,requirements,eligibility,url\n';
 
 // ---------------------------------------------------------------------------
 // bun CLI helper (LinkedIn)
@@ -100,6 +100,26 @@ function runCli(cliPath, args, label) {
       console.error(`  [error] ${label}: ${stderr.split('\n')[0]}`);
     }
     return { results: [] };
+  }
+}
+
+// Fetches one LinkedIn job's full detail page (the CLI's own `detail`
+// subcommand) for its complete description - the search-results card only
+// has title/company/location/date, no requirements text. Only called for
+// genuinely new postings (not on every search result) to keep request
+// volume low, per LinkedIn's ToS concerns already noted above.
+function runCliDetail(cliPath, id, label) {
+  try {
+    const out = execBun(['run', cliPath, 'detail', id, '--format', 'json']);
+    return JSON.parse(out);
+  } catch (err) {
+    const stderr = String(err.stderr || err.message || err);
+    if (/429/.test(stderr)) {
+      console.error(`  [rate-limited] detail ${label}: portal lagi throttle, skip detail buat ini.`);
+    } else {
+      console.error(`  [error] detail ${label}: ${stderr.split('\n')[0]}`);
+    }
+    return null;
   }
 }
 
@@ -145,6 +165,64 @@ function extractJsonAfterMarker(html, marker) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Balanced-depth extraction of a <div data-automation="X">...</div> block,
+// so nested <div>s inside the description (bullet lists, etc.) don't
+// truncate it early. Same technique as extractJsonAfterMarker above, applied
+// to tags instead of braces.
+function extractDivByAttr(html, attr, value) {
+  const openRe = new RegExp(`<div[^>]*${attr}="${value}"[^>]*>`, 'i');
+  const open = openRe.exec(html);
+  if (!open) return null;
+  let i = open.index + open[0].length;
+  let depth = 1;
+  while (depth > 0 && i < html.length) {
+    const nextOpen = html.indexOf('<div', i);
+    const nextClose = html.indexOf('</div>', i);
+    if (nextClose === -1) return null;
+    if (nextOpen !== -1 && nextOpen < nextClose) { depth++; i = nextOpen + 4; }
+    else { depth--; i = nextClose + 6; }
+  }
+  return html.slice(open.index + open[0].length, i - 6);
+}
+
+function decodeHtmlEntities(str) {
+  return str
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+}
+
+function htmlToText(html) {
+  const withBreaks = html
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|li|ul|ol|div|h[1-6])>/gi, '\n');
+  return decodeHtmlEntities(withBreaks.replace(/<[^>]+>/g, ' ')).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Fetches a single JobStreet job's own page for its full description - the
+// search-results page only gives a ~200-char teaser (job.abstract), not
+// enough to tell "open to students" from "graduate hire only". Same
+// no-login public GET as fetchJobStreetPage; only called for genuinely new
+// postings (not on every search result) to keep request volume down.
+async function fetchJobStreetDetail(url) {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      redirect: 'follow',
+    });
+    const html = await res.text();
+    if (!res.ok) return null;
+    const block = extractDivByAttr(html, 'data-automation', 'jobAdDetails');
+    return block ? htmlToText(block) : null;
+  } catch {
+    return null;
+  }
 }
 
 // Returns { jobs, blocked }. `blocked: true` means JobStreet's Cloudflare
@@ -277,6 +355,69 @@ function employmentTypeHint(job) {
   return INTERN_PATTERN.test(text) ? 'Kemungkinan magang (dari judul)' : '';
 }
 
+// ---------------------------------------------------------------------------
+// Eligibility classification - is this posting actually open to an active
+// student (magang/internship), or does it require an already-completed
+// degree? Keyword-based on purpose: a real postingan's wording varies too
+// much for anything fancier to be worth the false-confidence risk. Flags
+// "unclear" rather than guessing when a posting mixes both kinds of signal
+// (e.g. "magang atau fresh graduate") - better to leave that for the user to
+// read than to silently pick a side.
+// ---------------------------------------------------------------------------
+const STUDENT_OK_PATTERNS = [
+  /mahasiswa aktif/i, /mahasiswa tingkat akhir/i, /masih (ber)?kuliah/i, /semester akhir/i,
+  /minimal semester \d/i, /on-?going student/i, /final year student/i, /currently (enrolled|studying)/i,
+  /sedang menempuh pendidikan/i, /\bmagang\b/i, /\binternship\b/i, /kerja praktek/i, /\bKP\b/,
+  /\bPKL\b/, /program magang/i,
+];
+const GRADUATE_REQUIRED_PATTERNS = [
+  /fresh graduate/i, /lulusan (baru|S1|D3|D4)\b/i, /sudah lulus/i, /min(imal)? (sudah )?lulus/i,
+  /pengalaman (kerja )?(min(imal)?\s*)?\d+\s*tahun/i, /\d+\+?\s*years?\s*(of\s*)?experience/i,
+  /full[- ]?time (position|employee|staff)\b/i, /karyawan tetap/i, /\bnon-?internship\b/i,
+];
+
+function classifyEligibility(text) {
+  if (!text) return '';
+  const studentHit = STUDENT_OK_PATTERNS.some((p) => p.test(text));
+  const gradHit = GRADUATE_REQUIRED_PATTERNS.some((p) => p.test(text));
+  if (studentHit && gradHit) return 'unclear';
+  if (studentHit) return 'student_ok';
+  if (gradHit) return 'graduate_required';
+  return '';
+}
+
+// Pulls the "Requirements"/"Qualifications"/"Persyaratan"/"Kualifikasi"
+// section out of a full description, so the dashboard can show just the
+// relevant bit instead of the whole posting text.
+//
+// Headers frequently run straight into the following content with no line
+// break once HTML gets flattened to text (e.g. "Minimum Qualifications
+// Currently pursuing a degree..." - no colon, no newline), so this can't
+// just anchor to its own line. Instead it scans every occurrence of the
+// header word (case-insensitively - postings vary) and, for each, checks
+// with a plain character comparison (deliberately NOT case-insensitive)
+// whether what follows starts a new sentence: an actual capital letter or a
+// newline. That's true right after a real header, but not after
+// "requirements" used as an ordinary word mid-sentence ("...meet project
+// requirements. Participate in...", where "." follows, not a capital).
+const REQUIREMENTS_HEADER = /\b(?:requirements?|qualifications?|persyaratan|kualifikasi)\b(?:\s+(?:and|dan)\s+\w+)?\s*:?\s*/gi;
+
+function extractRequirements(text) {
+  if (!text) return '';
+  const re = new RegExp(REQUIREMENTS_HEADER.source, 'gi');
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const start = m.index + m[0].length;
+    const nextChar = text[start];
+    if (nextChar === '\n' || (nextChar >= 'A' && nextChar <= 'Z')) {
+      const rest = text.slice(start);
+      const stop = rest.search(/\n\s*\n/);
+      return (stop === -1 ? rest : rest.slice(0, stop)).trim().slice(0, 600);
+    }
+  }
+  return '';
+}
+
 // Consolidate same company+title posted across multiple cities into one row,
 // instead of presenting each city as a separate "new" listing.
 function consolidateMassPostings(jobs) {
@@ -330,6 +471,7 @@ function appendRow(job) {
   const row = [
     new Date().toISOString().slice(0, 10),
     job.portal,
+    job.source_type || 'job_listing',
     job.title,
     job.company,
     job.location,
@@ -338,6 +480,8 @@ function appendRow(job) {
     job.salary || '',
     job.date,
     job.description || '',
+    job.requirements || '',
+    job.eligibility || '',
     job.url,
   ].map(csvEscape).join(',');
   appendFileSync(LOG_PATH, row + '\n', 'utf-8');
@@ -576,6 +720,34 @@ async function main() {
     if (seenThisRun.has(job.url)) continue;
     seenThisRun.add(job.url);
     dedupedThisRun.push(job);
+  }
+
+  // Only new postings get their detail page opened - re-fetching detail for
+  // postings already in the log on every run would multiply request volume
+  // for no benefit (their description/requirements never change after the
+  // fact anyway).
+  if (dedupedThisRun.length) {
+    console.log(`\nMembuka detail ${dedupedThisRun.length} lowongan baru (buat persyaratan + status mahasiswa/lulusan)...`);
+  }
+  for (const job of dedupedThisRun) {
+    job.source_type = 'job_listing';
+    let fullText = job.description || '';
+    if (job.portal === 'linkedin') {
+      const detail = runCliDetail(LINKEDIN_CLI, job.url, `${job.company} - ${job.title}`);
+      if (detail && detail.description) fullText = detail.description;
+      await sleep(500 + Math.floor(Math.random() * 500));
+    } else if (job.portal === 'jobstreet') {
+      const full = await fetchJobStreetDetail(job.url);
+      if (full) fullText = full;
+      await sleep(400 + Math.floor(Math.random() * 400));
+    }
+    job.description = fullText;
+    job.requirements = extractRequirements(fullText);
+    job.eligibility = classifyEligibility(`${job.title} ${fullText}`);
+    const elig = job.eligibility === 'student_ok' ? 'mahasiswa OK'
+      : job.eligibility === 'graduate_required' ? 'perlu lulus'
+      : job.eligibility === 'unclear' ? 'campuran' : '-';
+    console.log(`  [detail] ${job.portal}: ${job.title} - ${job.company} (${elig})`);
   }
 
   const consolidated = consolidateMassPostings(dedupedThisRun);

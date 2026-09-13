@@ -194,6 +194,14 @@
     display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10px;
     font-weight: 700; background: #f3f4f6; color: var(--text-muted); border: 1px solid var(--border);
   }
+  .elig-badge {
+    display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    white-space: nowrap; cursor: default;
+  }
+  .elig-student { background: #dcfce7; color: #166534; }
+  .elig-graduate { background: #fee2e2; color: #991b1b; }
+  .elig-unclear { background: #fef3c7; color: #92400e; }
+  .elig-none { background: transparent; color: var(--text-muted); }
 
   .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; font-size: 13px; flex-wrap: wrap; }
   .pagination button { padding: 6px 12px; box-shadow: none; }
@@ -242,6 +250,13 @@
         <input type="text" id="scrapedSearch" placeholder="Search title, company, or location...">
         <select id="scrapedPortalFilter"><option value="">All portals</option></select>
         <select id="scrapedTierFilter"><option value="">All location tiers</option></select>
+        <select id="scrapedEligibilityFilter">
+          <option value="">All eligibility</option>
+          <option value="student_ok">Open to students</option>
+          <option value="graduate_required">Graduate required</option>
+          <option value="unclear">Mixed signals</option>
+          <option value="none">Not stated</option>
+        </select>
         <label class="checkbox-label"><input type="checkbox" id="hideExpiredCheck" checked> Hide expired</label>
       </div>
       <div class="expiry-bar">
@@ -1035,6 +1050,7 @@
     var search = document.getElementById("scrapedSearch").value.trim().toLowerCase();
     var portalF = document.getElementById("scrapedPortalFilter").value;
     var tierF = document.getElementById("scrapedTierFilter").value;
+    var eligF = document.getElementById("scrapedEligibilityFilter").value;
     var hideExpired = document.getElementById("hideExpiredCheck").checked;
     var maxAgeDays = getMaxAgeDays();
 
@@ -1045,6 +1061,7 @@
       if (hideExpired && expired) return false;
       if (portalF && r.portal !== portalF) return false;
       if (tierF && r.location_tier !== tierF) return false;
+      if (eligF === "none" ? r.eligibility : (eligF && r.eligibility !== eligF)) return false;
       if (search) {
         var hay = [r.title, r.company, r.location].join(" ").toLowerCase();
         if (hay.indexOf(search) === -1) return false;
@@ -1072,16 +1089,29 @@
     var pageStart = (scrapedPage - 1) * PAGE_SIZE;
     var pageRows = rows.slice(pageStart, pageStart + PAGE_SIZE);
 
+    var ELIGIBILITY_META = {
+      student_ok:        { label: "Open to students",  cls: "elig-student" },
+      graduate_required: { label: "Graduate required",  cls: "elig-graduate" },
+      unclear:           { label: "Mixed signals",      cls: "elig-unclear" },
+    };
+    var SOURCE_TYPE_LABEL = { job_listing: "📋 Listing", feed_post: "💬 Post" };
+
     var body = pageRows.map(function (r, i) {
       var salary = r.salary || "—";
       var expired = isExpiredPosting(r, maxAgeDays);
+      var elig = ELIGIBILITY_META[r.eligibility];
+      var eligCell = elig
+        ? '<span class="elig-badge ' + elig.cls + '" title="' + escapeHtml(r.requirements || "") + '">' + elig.label + '</span>'
+        : '<span class="elig-badge elig-none">—</span>';
+      var sourceLabel = SOURCE_TYPE_LABEL[r.source_type] || SOURCE_TYPE_LABEL.job_listing;
       return '<tr class="' + (expired ? "expired-row" : "") + '">' +
         "<td>" + escapeHtml(r.found_date || "—") + (expired ? '<span class="expired-badge">expired</span>' : "") + "</td>" +
-        "<td>" + escapeHtml(r.portal || "—") + "</td>" +
+        "<td>" + escapeHtml(r.portal || "—") + "<br><span class=\"settings-help\">" + sourceLabel + "</span></td>" +
         "<td>" + escapeHtml(r.title || "—") + "</td>" +
         "<td>" + escapeHtml(r.company || "—") + "</td>" +
         "<td>" + escapeHtml(r.location || "—") + "</td>" +
         "<td>" + escapeHtml(r.location_tier || "—") + "</td>" +
+        "<td>" + eligCell + "</td>" +
         "<td>" + escapeHtml(salary) + "</td>" +
         '<td>' + (r.url ? '<a class="source-link" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Open</a>' : "—") + "</td>" +
         '<td class="row-actions"><button data-track="' + i + '">+ Track</button></td>' +
@@ -1090,7 +1120,7 @@
 
     wrap.innerHTML =
       '<table><thead><tr><th>Found</th><th>Portal</th><th>Title</th><th>Company</th>' +
-      '<th>Location</th><th>Tier</th><th>Salary</th><th>Link</th><th>Actions</th></tr></thead>' +
+      '<th>Location</th><th>Tier</th><th>Eligibility</th><th>Salary</th><th>Link</th><th>Actions</th></tr></thead>' +
       "<tbody>" + body + "</tbody></table>";
 
     wrap.querySelectorAll("[data-track]").forEach(function (btn) {
@@ -1130,6 +1160,7 @@
   document.getElementById("scrapedSearch").addEventListener("input", onScrapedFilterChange);
   document.getElementById("scrapedPortalFilter").addEventListener("change", onScrapedFilterChange);
   document.getElementById("scrapedTierFilter").addEventListener("change", onScrapedFilterChange);
+  document.getElementById("scrapedEligibilityFilter").addEventListener("change", onScrapedFilterChange);
   document.getElementById("hideExpiredCheck").addEventListener("change", onScrapedFilterChange);
   document.getElementById("maxAgeDays").addEventListener("input", onScrapedFilterChange);
 
