@@ -10,6 +10,18 @@ REM scraper tab.
 setlocal
 set DASHBOARD_PORT=4870
 cd /d "%~dp0.."
+
+REM Already running (e.g. from an earlier double-click you forgot about)?
+REM Starting a second instance would just crash with EADDRINUSE and show a
+REM scary error window for no reason - detect it and skip straight to
+REM opening the browser instead.
+netstat -ano | findstr /c:":%DASHBOARD_PORT% " | findstr /c:"LISTENING" >nul
+if %errorlevel%==0 (
+  echo Dashboard sudah jalan di http://localhost:%DASHBOARD_PORT%/ - langsung dibuka di browser.
+  start "" "http://localhost:%DASHBOARD_PORT%/"
+  exit /b 0
+)
+
 echo Menjalankan dashboard server di http://localhost:%DASHBOARD_PORT%/ ...
 echo (Biarkan jendela ini tetap terbuka selama dashboard dipakai. Tutup untuk mematikan server.)
 echo.
