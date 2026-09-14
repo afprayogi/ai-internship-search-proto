@@ -1,12 +1,13 @@
 // Offline job scraper - no Claude/AI involved. Runs the LinkedIn CLI tool AND
-// fetches JobStreet directly (via its own server-rendered search pages), then
-// dedupes, cross-checks against jobs you've already applied to, tags rough
-// location/employment-type signals, and appends new listings to a CSV log.
+// fetches JobStreet + Glints directly (via their own server-rendered search
+// pages), then dedupes, cross-checks against jobs you've already applied to,
+// tags rough location/employment-type signals, and appends new listings to a
+// CSV log.
 //
 // freehire.me was dropped from this script on purpose - for Indonesia its
 // --country=ID facet conflated Indonesia with the US state abbreviation
 // "ID" (Idaho), and most results were senior/global roles, not internships.
-// LinkedIn + JobStreet cover this market far better on their own.
+// LinkedIn + JobStreet + Glints cover this market far better on their own.
 //
 // This does NOT evaluate fit, write CVs, or do anything that requires judgment -
 // that part of the framework needs Claude Code running interactively. This script
@@ -304,6 +305,99 @@ async function fetchJobStreetPage(query, page) {
 }
 
 // ---------------------------------------------------------------------------
+// Glints - same idea as JobStreet: a plain GET with a browser User-Agent
+// gets the first page of results server-rendered into a Next.js
+// __NEXT_DATA__ blob, no login needed. Deliberately page-1-only: results
+// beyond page 1 are fetched client-side via Glints' internal GraphQL API on
+// the real site, which isn't reverse-engineered here - that would mean
+// guessing at query/header shapes for an undocumented API rather than
+// reading data the page already sends you, a meaningfully different (and
+// more fragile) kind of scraping than everything else in this file.
+// ---------------------------------------------------------------------------
+function slugify(text) {
+  return (text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'job';
+}
+
+async function fetchGlintsPage(query) {
+  const url = `https://glints.com/id/opportunities/jobs/explore?keyword=${encodeURIComponent(query)}&country=ID`;
+  let html;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      redirect: 'follow',
+    });
+    html = await res.text();
+    if (!res.ok) {
+      console.error(`  [error] glints "${query}": HTTP ${res.status}`);
+      return [];
+    }
+  } catch (err) {
+    console.error(`  [error] glints "${query}": ${String(err.message || err).split('\n')[0]}`);
+    return [];
+  }
+
+  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!m) {
+    console.error(`  [error] glints "${query}": embedded data not found (site layout may have changed)`);
+    return [];
+  }
+  let data;
+  try {
+    data = JSON.parse(m[1]);
+  } catch {
+    console.error(`  [error] glints "${query}": embedded data did not parse as JSON`);
+    return [];
+  }
+  const jobs = data?.props?.pageProps?.initialJobs?.jobsInPage || [];
+
+  return jobs.filter((job) => job.id).map((job) => {
+    const s = (job.salaries || [])[0];
+    const salaryText = s && s.minAmount && s.maxAmount
+      ? `${s.CurrencyCode || 'IDR'} ${s.minAmount.toLocaleString('id-ID')}-${s.maxAmount.toLocaleString('id-ID')}`
+      : '';
+    return {
+      portal: 'glints',
+      title: job.title || '',
+      company: job.company?.name || '',
+      location: job.location?.name || '',
+      date: job.createdAt ? job.createdAt.slice(0, 10) : '',
+      url: `https://glints.com/id/opportunities/jobs/${slugify(job.title)}/${job.id}`,
+      description: '',
+      work_type: job.type === 'INTERNSHIP' ? 'Internship' : (job.type || ''),
+      salary: salaryText,
+    };
+  });
+}
+
+// Glints stores the full description as a Draft.js-style JSON string
+// ({"blocks":[{"text": "..."}, ...]}) rather than HTML, so this joins the
+// blocks' text instead of stripping tags like the other two portals' detail
+// fetchers do.
+async function fetchGlintsDetail(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+      redirect: 'follow',
+    });
+    const html = await res.text();
+    if (!res.ok) return null;
+    const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    if (!m) return null;
+    const data = JSON.parse(m[1]);
+    const descJsonStr = data?.props?.pageProps?.initialData?.data?.descriptionJsonString;
+    if (!descJsonStr) return null;
+    const descJson = JSON.parse(descJsonStr);
+    return (descJson.blocks || []).map((b) => b.text || '').join('\n') || null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
 
@@ -506,16 +600,23 @@ const GOOGLE_FORM_PATTERN = /\b(?:docs\.google\.com\/forms\/[^\s)"'<>]+|forms\.g
 const GENERIC_URL_PATTERN = /\bhttps?:\/\/[^\s)"'<>]+/gi;
 const EMAIL_NEAR_APPLY = /(?:kirim|send|apply|lamar|cv|resume|daftar)[^.\n]{0,60}?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i;
 
+const PORTAL_FALLBACK_METHOD = {
+  jobstreet: 'Via JobStreet (klik Open)',
+  glints: 'Via Glints (klik Open)',
+  linkedin: 'Via LinkedIn (klik Open, perlu login)',
+};
+
 function detectApplyMethod(text, portal) {
-  if (!text) return portal === 'jobstreet' ? 'Via JobStreet' : 'Via LinkedIn (perlu login)';
+  const fallback = PORTAL_FALLBACK_METHOD[portal] || 'Via portal (klik Open)';
+  if (!text) return fallback;
   const form = text.match(GOOGLE_FORM_PATTERN);
   if (form) return `Google Form: ${form[0]}`;
   const urls = text.match(GENERIC_URL_PATTERN) || [];
-  const external = urls.find((u) => !/linkedin\.com|jobstreet\.com/i.test(u));
+  const external = urls.find((u) => !/linkedin\.com|jobstreet\.com|glints\.com/i.test(u));
   if (external) return `Link lain di postingan: ${external}`;
   const email = text.match(EMAIL_NEAR_APPLY);
   if (email) return `Kirim CV via email: ${email[1]}`;
-  return portal === 'jobstreet' ? 'Via JobStreet (klik Open)' : 'Via LinkedIn (klik Open, perlu login)';
+  return fallback;
 }
 
 // Consolidate same company+title posted across multiple cities into one row,
@@ -810,6 +911,16 @@ async function main() {
     }
   }
 
+  for (const q of KEYWORDS) {
+    console.log(`  Glints: "${q}"`);
+    const jobs = await fetchGlintsPage(q);
+    jobs.forEach((j) => { j.keyword = q; });
+    collected.push(...jobs);
+    const newish = jobs.filter((j) => !seen[j.url]).length;
+    logQueryProgress(jobs.length, newish);
+    await sleep(400 + Math.floor(Math.random() * 400)); // jeda sopan antar request
+  }
+
   // Dedup against this script's own memory + skip anything already applied to.
   const fresh = collected.filter((job) => {
     if (!job.url || seen[job.url]) return false;
@@ -842,6 +953,10 @@ async function main() {
       await sleep(500 + Math.floor(Math.random() * 500));
     } else if (job.portal === 'jobstreet') {
       const full = await fetchJobStreetDetail(job.url);
+      if (full) fullText = full;
+      await sleep(400 + Math.floor(Math.random() * 400));
+    } else if (job.portal === 'glints') {
+      const full = await fetchGlintsDetail(job.url);
       if (full) fullText = full;
       await sleep(400 + Math.floor(Math.random() * 400));
     }

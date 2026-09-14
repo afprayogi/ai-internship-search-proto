@@ -4,7 +4,7 @@
 
 # AI Job Search Dashboard
 
-*An automated internship search assistant for Indonesia — LinkedIn + JobStreet scraping, application tracking, and WhatsApp alerts, powered by Claude Code.*
+*An automated internship search assistant for Indonesia — LinkedIn + JobStreet + Glints scraping, application tracking, and WhatsApp alerts, powered by Claude Code.*
 
 **Built by [Ahmad Fauzan Prayogi](https://www.linkedin.com/in/ahmad-fauzan-prayogi-39653b1a7/)** — Electrical Automation Engineering student, ITS Surabaya.
 
@@ -25,7 +25,7 @@
 This repo runs a full internship-search pipeline for Ahmad Fauzan Prayogi (Electrical Automation Engineering, ITS Surabaya), combining two layers:
 
 1. **The Claude Code workflow** (upstream framework) — profile setup, job evaluation, tailored CV/cover-letter generation, and interview prep, all run conversationally inside Claude Code.
-2. **A custom offline layer** (`tools/`), built on top of the framework, that searches LinkedIn and JobStreet **without needing Claude open or any AI usage**, and can notify a WhatsApp number/group when new postings show up — via a self-hosted [go-whatsapp-web-multidevice](https://github.com/aldinokemal/go-whatsapp-web-multidevice) gateway running in Docker.
+2. **A custom offline layer** (`tools/`), built on top of the framework, that searches LinkedIn, JobStreet, and Glints **without needing Claude open or any AI usage**, and can notify a WhatsApp number/group when new postings show up — via a self-hosted [go-whatsapp-web-multidevice](https://github.com/aldinokemal/go-whatsapp-web-multidevice) gateway running in Docker.
 
 ## How it fits together
 
@@ -41,6 +41,7 @@ flowchart TD
         bat["run_offline_scraper.bat"] --> scraper["tools/offline_scraper.mjs"]
         scraper -->|"LinkedIn CLI"| li[("LinkedIn\njobs-guest API")]
         scraper -->|"embedded JSON\nfrom search pages"| js[("JobStreet")]
+        scraper -->|"embedded JSON\n(page 1 only)"| gl[("Glints")]
         scraper --> csv[("job_scraper/\noffline_jobs_log.csv")]
         scraper -->|"new listings found"| wa["WhatsApp gateway\n(go-whatsapp-web-multidevice)"]
         wa -->|"Docker container\nlocalhost:3000"| phone(["Your phone / group"])
@@ -93,7 +94,7 @@ Double-click:
 tools\run_offline_scraper.bat
 ```
 
-Searches LinkedIn + JobStreet for every keyword in `tools/offline_scraper.mjs` (`KEYWORDS`), skips anything already seen or already applied to (`job_search_tracker.csv`), and appends new listings to `job_scraper/offline_jobs_log.csv`. Fully offline — zero Claude/AI usage.
+Searches LinkedIn + JobStreet + Glints for every keyword in `job_scraper/scraper_config.json`, skips anything already seen or already applied to (`job_search_tracker.csv`), and appends new listings to `job_scraper/offline_jobs_log.csv`. Fully offline — zero Claude/AI usage. Glints is page-1-only per keyword (its own internal API handles pagination beyond that, which isn't reverse-engineered here); LinkedIn and JobStreet's page limits are configurable via Search settings.
 
 ### 3. WhatsApp notifications (optional)
 

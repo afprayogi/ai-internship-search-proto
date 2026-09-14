@@ -237,7 +237,7 @@
       <div class="section-head">
         <div>
           <h2>🕵️ Scraped postings</h2>
-          <div class="sub" id="scrapedSub">via LinkedIn + JobStreet (tools/offline_scraper.mjs)</div>
+          <div class="sub" id="scrapedSub">via LinkedIn + JobStreet + Glints (tools/offline_scraper.mjs)</div>
         </div>
         <div class="actions">
           <button id="linkedinCookieBtn">🔗 LinkedIn feed login</button>
@@ -1312,7 +1312,7 @@
     fetch("/api/scraped").then(function (r) { return r.json(); }).then(function (rows) {
       scrapedData = rows;
       document.getElementById("scrapedSub").textContent =
-        rows.length + " postings on file · via LinkedIn + JobStreet (tools/offline_scraper.mjs)";
+        rows.length + " postings on file · via LinkedIn + JobStreet + Glints (tools/offline_scraper.mjs)";
       populateScrapedFilterOptions();
       renderScrapedTable();
     }).catch(function () { /* server briefly unreachable - keep last known table */ });
