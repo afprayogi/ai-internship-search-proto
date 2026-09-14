@@ -49,6 +49,7 @@ const SCRAPED_LOG_PATH = path.join(ROOT, 'job_scraper', 'offline_jobs_log.csv');
 const CONFIG_PATH = path.join(ROOT, 'job_scraper', 'scraper_config.json');
 const TRACKER_PATH = path.join(ROOT, 'job_search_tracker.csv');
 const ENV_PATH = path.join(ROOT, '.env');
+const SEEN_PATH = path.join(ROOT, 'job_scraper', 'offline_seen.json');
 
 const TRACKER_FIELDS = ['date', 'company', 'sector', 'role', 'role_type', 'channel', 'status',
   'contact_person', 'fit_rating', 'notes', 'cv_file', 'cover_letter_file', 'source'];
@@ -247,24 +248,55 @@ function clearLinkedinCookie() {
 // ever grows. This is the one place that actually deletes rows from it:
 // anything older than maxAgeDays (by found_date) gets dropped for good.
 // Rows with an unparseable found_date are kept rather than guessed at.
+//
+// offline_seen.json (the scraper's own dedup memory) gets the matching URLs
+// removed too - otherwise a "cleared"/"cleaned up" posting would just be
+// silently invisible forever instead of actually gone, since the scraper
+// would keep treating its URL as already-seen and never re-surface it even
+// if it were still live.
 // ---------------------------------------------------------------------------
+function removeFromSeen(urls) {
+  const list = urls.filter(Boolean);
+  if (!list.length || !existsSync(SEEN_PATH)) return;
+  let seen;
+  try {
+    seen = JSON.parse(readFileSync(SEEN_PATH, 'utf-8'));
+  } catch {
+    return; // malformed seen file - leave it alone rather than guess
+  }
+  let changed = false;
+  for (const url of list) {
+    if (seen[url]) { delete seen[url]; changed = true; }
+  }
+  if (changed) writeFileSync(SEEN_PATH, JSON.stringify(seen, null, 2), 'utf-8');
+}
+
 function clearAllScrapedPostings() {
-  const removed = existsSync(SCRAPED_LOG_PATH)
-    ? csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS).length
-    : 0;
+  const records = existsSync(SCRAPED_LOG_PATH)
+    ? csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS)
+    : [];
   writeFileSync(SCRAPED_LOG_PATH, SCRAPED_FIELDS.join(',') + '\n', 'utf-8');
-  return { removed, remaining: 0 };
+  // A full reset, not just the rows that happened to be in the log - wipes
+  // the whole dedup memory (not just entries matching current rows) so
+  // "clear all" actually means "start over", including any orphaned seen
+  // entries left over from an earlier schema migration or manual edit.
+  if (existsSync(SEEN_PATH)) writeFileSync(SEEN_PATH, '{}', 'utf-8');
+  return { removed: records.length, remaining: 0 };
 }
 
 function cleanupExpiredPostings(maxAgeDays) {
   if (!existsSync(SCRAPED_LOG_PATH)) return { removed: 0, remaining: 0 };
   const records = csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS);
   const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
-  const kept = records.filter((r) => {
+  const kept = [];
+  const removedUrls = [];
+  for (const r of records) {
     const t = Date.parse(r.found_date);
-    return isNaN(t) || t >= cutoff;
-  });
+    if (isNaN(t) || t >= cutoff) kept.push(r);
+    else removedUrls.push(r.url);
+  }
   writeFileSync(SCRAPED_LOG_PATH, recordsToCsv(kept, SCRAPED_FIELDS), 'utf-8');
+  removeFromSeen(removedUrls);
   return { removed: records.length - kept.length, remaining: kept.length };
 }
 
