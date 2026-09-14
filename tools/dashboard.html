@@ -261,8 +261,15 @@
           <option value="found_date">Sort: Newest first</option>
           <option value="fit_score">Sort: Best fit first</option>
           <option value="deadline">Sort: Deadline soonest</option>
+          <option value="distance">Sort: Nearest first</option>
         </select>
         <label class="checkbox-label"><input type="checkbox" id="hideExpiredCheck" checked> Hide expired</label>
+      </div>
+      <div class="expiry-bar">
+        <span id="myLocationStatus">Distance: not set.</span>
+        <button type="button" id="useMyLocationBtn">📍 Use my location</button>
+        <button type="button" id="clearMyLocationBtn" style="display:none;">Clear</button>
+        <span class="settings-help">Only used in this browser to compute distance - never sent anywhere, not even to the local server.</span>
       </div>
       <div class="expiry-bar">
         <span>Postings older than</span>
@@ -1039,6 +1046,105 @@
     document.getElementById("linkedinCookieBtn").disabled = !online;
   }
 
+  // ---------- distance-to-posting ----------
+  // Approximate city-center coordinates for common Indonesian cities/regencies
+  // that show up in scraped postings. Straight-line ("as the crow flies")
+  // distance only - no routing/traffic data, so treat it as a rough filter,
+  // not an actual commute time. Longer/more specific names are checked
+  // before shorter ones so "jakarta selatan" matches before generic
+  // "jakarta" - order in this list matters.
+  var CITY_COORDS = [
+    ["jakarta selatan", -6.2615, 106.8106], ["jakarta pusat", -6.1862, 106.8347],
+    ["jakarta utara", -6.1481, 106.8620], ["jakarta barat", -6.1683, 106.7588],
+    ["jakarta timur", -6.2250, 106.9004], ["jakarta", -6.2088, 106.8456],
+    ["tangerang selatan", -6.2897, 106.7178], ["tangerang", -6.1783, 106.6319],
+    ["bekasi", -6.2383, 106.9756], ["cikarang", -6.2521, 107.1538],
+    ["bogor", -6.5971, 106.8060], ["depok", -6.4025, 106.7942],
+    ["karawang", -6.3227, 107.3376], ["purwakarta", -6.5569, 107.4436],
+    ["subang", -6.5716, 107.7602], ["serang", -6.1149, 106.1503],
+    ["cilegon", -6.0025, 106.0113],
+    ["surabaya", -7.2575, 112.7521], ["sidoarjo", -7.4478, 112.7183],
+    ["gresik", -7.1560, 112.6539], ["mojokerto", -7.4664, 112.4335],
+    ["jombang", -7.5460, 112.2340], ["lamongan", -7.1170, 112.4147],
+    ["malang", -7.9666, 112.6326], ["batu", -7.8706, 112.5245],
+    ["bandung barat", -6.8360, 107.4880], ["bandung", -6.9175, 107.6191],
+    ["cimahi", -6.8841, 107.5420],
+    ["yogyakarta", -7.7956, 110.3695], ["sleman", -7.7167, 110.3569],
+    ["bantul", -7.8878, 110.3288],
+    ["semarang", -6.9932, 110.4203], ["solo", -7.5755, 110.8243],
+    ["surakarta", -7.5755, 110.8243],
+    ["denpasar", -8.6705, 115.2126], ["badung", -8.5900, 115.1650],
+    ["medan", 3.5952, 98.6722], ["deli serdang", 3.5300, 98.7500],
+    ["makassar", -5.1477, 119.4327], ["batam", 1.0456, 104.0305],
+    ["palembang", -2.9761, 104.7754], ["balikpapan", -1.2379, 116.8529],
+    ["samarinda", -0.5022, 117.1536], ["pekanbaru", 0.5333, 101.4500],
+    ["padang", -0.9471, 100.4172], ["banjarmasin", -3.3186, 114.5944],
+    ["manado", 1.4748, 124.8421],
+  ];
+
+  function geocodeLocation(text) {
+    var t = (text || "").toLowerCase();
+    for (var i = 0; i < CITY_COORDS.length; i++) {
+      if (t.indexOf(CITY_COORDS[i][0]) !== -1) return { lat: CITY_COORDS[i][1], lng: CITY_COORDS[i][2] };
+    }
+    return null;
+  }
+
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    var R = 6371;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLng = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  var MY_LOCATION_KEY = STORAGE_KEY + ".myLocation";
+  var myLocation = null;
+  try {
+    var savedLoc = localStorage.getItem(MY_LOCATION_KEY);
+    if (savedLoc) myLocation = JSON.parse(savedLoc);
+  } catch (e) { /* ignore - just means distance starts unset */ }
+
+  function distanceToPosting(r) {
+    if (!myLocation) return null;
+    var coords = geocodeLocation(r.location);
+    if (!coords) return null;
+    return haversineKm(myLocation.lat, myLocation.lng, coords.lat, coords.lng);
+  }
+
+  function refreshMyLocationUi() {
+    var statusEl = document.getElementById("myLocationStatus");
+    var clearBtn = document.getElementById("clearMyLocationBtn");
+    if (myLocation) {
+      statusEl.textContent = "Distance: using your shared location (accurate to city level, straight-line only).";
+      clearBtn.style.display = "";
+    } else {
+      statusEl.textContent = "Distance: not set.";
+      clearBtn.style.display = "none";
+    }
+  }
+
+  document.getElementById("useMyLocationBtn").addEventListener("click", function () {
+    if (!navigator.geolocation) { toast("This browser doesn't support geolocation"); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      myLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      try { localStorage.setItem(MY_LOCATION_KEY, JSON.stringify(myLocation)); } catch (e) { /* ignore */ }
+      refreshMyLocationUi();
+      toast("Location saved (this browser only) - distances now shown");
+      renderScrapedTable();
+    }, function () {
+      toast("Couldn't get your location - check your browser's location permission");
+    }, { timeout: 10000 });
+  });
+  document.getElementById("clearMyLocationBtn").addEventListener("click", function () {
+    myLocation = null;
+    try { localStorage.removeItem(MY_LOCATION_KEY); } catch (e) { /* ignore */ }
+    refreshMyLocationUi();
+    renderScrapedTable();
+  });
+  refreshMyLocationUi();
+
   function getMaxAgeDays() {
     var v = parseInt(document.getElementById("maxAgeDays").value, 10);
     return (Number.isFinite(v) && v > 0) ? v : 30;
@@ -1087,6 +1193,10 @@
         var da = a.deadline_iso || "9999-99-99"; // no deadline -> sorts last
         var db = b.deadline_iso || "9999-99-99";
         if (da !== db) return da.localeCompare(db);
+      } else if (sortBy === "distance") {
+        var ka = distanceToPosting(a), kb = distanceToPosting(b);
+        var xa = ka == null ? Infinity : ka, xb = kb == null ? Infinity : kb; // unknown distance -> sorts last
+        if (xa !== xb) return xa - xb;
       }
       return String(b.found_date || "").localeCompare(String(a.found_date || ""));
     });
@@ -1149,13 +1259,16 @@
         ? '<span class="elig-badge ' + elig.cls + '" title="' + escapeHtml(r.requirements || "") + '">' + elig.label + '</span>'
         : '<span class="elig-badge elig-none">—</span>';
       var sourceLabel = SOURCE_TYPE_LABEL[r.source_type] || SOURCE_TYPE_LABEL.job_listing;
+      var dist = distanceToPosting(r);
+      var tierCell = escapeHtml(r.location_tier || "—") +
+        (dist != null ? "<br><span class=\"settings-help\">~" + Math.round(dist) + " km</span>" : "");
       return '<tr class="' + (expired ? "expired-row" : "") + '">' +
         "<td>" + escapeHtml(r.found_date || "—") + (expired ? '<span class="expired-badge">expired</span>' : "") + "</td>" +
         "<td>" + escapeHtml(r.portal || "—") + "<br><span class=\"settings-help\">" + sourceLabel + "</span></td>" +
         "<td>" + escapeHtml(r.title || "—") + "</td>" +
         "<td>" + escapeHtml(r.company || "—") + "</td>" +
         "<td>" + escapeHtml(r.location || "—") + "</td>" +
-        "<td>" + escapeHtml(r.location_tier || "—") + "</td>" +
+        "<td>" + tierCell + "</td>" +
         "<td>" + eligCell + "</td>" +
         "<td>" + fitBadge(r.fit_score) + "</td>" +
         "<td>" + deadlineCell(r) + "</td>" +
