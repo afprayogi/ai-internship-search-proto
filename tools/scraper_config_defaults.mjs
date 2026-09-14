@@ -69,4 +69,20 @@ export const DEFAULT_CONFIG = {
   // workable vs. everything else (flagged "cek jarak" in results).
   idealLocations: ['surabaya', 'sidoarjo', 'gresik', 'mojokerto', 'jombang', 'lamongan'],
   acceptableLocations: ['jawa timur', 'east java', 'malang', 'jakarta', 'bandung', 'yogyakarta', 'remote'],
+  // Skill/domain keywords from CLAUDE.md's candidate profile, used to compute
+  // an offline "fit score" per posting (see computeFitScore in
+  // offline_scraper.mjs) - how many of these show up in the full job
+  // description. Pure keyword overlap, not real judgment of actual fit
+  // (that still needs Claude reading the posting, e.g. via /rank) - tune
+  // this list via the dashboard's Search settings panel if it over/under-matches.
+  profileSkills: [
+    'Python', 'PyTorch', 'TensorFlow', 'Scikit-learn', 'OpenCV', 'YOLO', 'ONNX',
+    'ESP32', 'Arduino', 'ATmega', 'STM32', 'Raspberry Pi', 'embedded system',
+    'JavaScript', 'Next.js', 'Flask', 'Flutter', 'PHP', 'SQL', 'C++', 'Dart', 'Node-RED',
+    'AIoT', 'MLOps', 'machine learning', 'computer vision', 'artificial intelligence',
+    'industrial automation', 'automation', 'robotics', 'PLC', 'SCADA', 'control system',
+    'IoT', 'sensor', 'MQTT', 'MODBUS', 'OPC-UA',
+    'electrical engineering', 'instrumentation', 'maintenance',
+    'disaster', 'climate', 'early warning', 'monitoring system',
+  ],
 };

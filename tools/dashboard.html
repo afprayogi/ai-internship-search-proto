@@ -257,6 +257,11 @@
           <option value="unclear">Mixed signals</option>
           <option value="none">Not stated</option>
         </select>
+        <select id="scrapedSort">
+          <option value="found_date">Sort: Newest first</option>
+          <option value="fit_score">Sort: Best fit first</option>
+          <option value="deadline">Sort: Deadline soonest</option>
+        </select>
         <label class="checkbox-label"><input type="checkbox" id="hideExpiredCheck" checked> Hide expired</label>
       </div>
       <div class="expiry-bar">
@@ -428,6 +433,11 @@
         <div>
           <label>JobStreet pages per keyword</label>
           <input type="number" min="1" max="5" id="s_jobstreet_pages">
+        </div>
+        <div class="full">
+          <label>Your skills/domain keywords (one per line, for the offline Fit score)</label>
+          <textarea id="s_profile_skills"></textarea>
+          <p class="settings-help">Keyword overlap only, not real judgment of fit - a posting mentioning more of these scores higher. Tune this list if it over- or under-matches for you.</p>
         </div>
       </div>
       <div class="modal-footer">
@@ -1051,6 +1061,7 @@
     var portalF = document.getElementById("scrapedPortalFilter").value;
     var tierF = document.getElementById("scrapedTierFilter").value;
     var eligF = document.getElementById("scrapedEligibilityFilter").value;
+    var sortBy = document.getElementById("scrapedSort").value;
     var hideExpired = document.getElementById("hideExpiredCheck").checked;
     var maxAgeDays = getMaxAgeDays();
 
@@ -1068,6 +1079,15 @@
       }
       return true;
     }).sort(function (a, b) {
+      if (sortBy === "fit_score") {
+        var fa = a.fit_score === "" || a.fit_score == null ? -1 : Number(a.fit_score);
+        var fb = b.fit_score === "" || b.fit_score == null ? -1 : Number(b.fit_score);
+        if (fa !== fb) return fb - fa;
+      } else if (sortBy === "deadline") {
+        var da = a.deadline_iso || "9999-99-99"; // no deadline -> sorts last
+        var db = b.deadline_iso || "9999-99-99";
+        if (da !== db) return da.localeCompare(db);
+      }
       return String(b.found_date || "").localeCompare(String(a.found_date || ""));
     });
 
@@ -1096,6 +1116,23 @@
     };
     var SOURCE_TYPE_LABEL = { job_listing: "📋 Listing", feed_post: "💬 Post" };
 
+    function fitBadge(score) {
+      if (score === "" || score == null) return '<span class="elig-badge elig-none">—</span>';
+      var n = Number(score);
+      var cls = n >= 50 ? "elig-student" : n >= 20 ? "elig-unclear" : "elig-none";
+      return '<span class="elig-badge ' + cls + '">' + n + '</span>';
+    }
+
+    function deadlineCell(r) {
+      if (!r.deadline) return "—";
+      var soon = r.deadline_iso && r.deadline_iso <= new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      var past = r.deadline_iso && r.deadline_iso < new Date().toISOString().slice(0, 10);
+      var cls = past ? "elig-graduate" : soon ? "elig-unclear" : "";
+      return cls
+        ? '<span class="elig-badge ' + cls + '">' + escapeHtml(r.deadline) + '</span>'
+        : escapeHtml(r.deadline);
+    }
+
     var body = pageRows.map(function (r, i) {
       var salary = r.salary || "—";
       var expired = isExpiredPosting(r, maxAgeDays);
@@ -1112,6 +1149,8 @@
         "<td>" + escapeHtml(r.location || "—") + "</td>" +
         "<td>" + escapeHtml(r.location_tier || "—") + "</td>" +
         "<td>" + eligCell + "</td>" +
+        "<td>" + fitBadge(r.fit_score) + "</td>" +
+        "<td>" + deadlineCell(r) + "</td>" +
         "<td>" + escapeHtml(salary) + "</td>" +
         '<td>' + (r.url ? '<a class="source-link" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Open</a>' : "—") + "</td>" +
         '<td class="row-actions"><button data-track="' + i + '">+ Track</button></td>' +
@@ -1120,7 +1159,7 @@
 
     wrap.innerHTML =
       '<table><thead><tr><th>Found</th><th>Portal</th><th>Title</th><th>Company</th>' +
-      '<th>Location</th><th>Tier</th><th>Eligibility</th><th>Salary</th><th>Link</th><th>Actions</th></tr></thead>' +
+      '<th>Location</th><th>Tier</th><th>Eligibility</th><th>Fit</th><th>Deadline</th><th>Salary</th><th>Link</th><th>Actions</th></tr></thead>' +
       "<tbody>" + body + "</tbody></table>";
 
     wrap.querySelectorAll("[data-track]").forEach(function (btn) {
@@ -1161,6 +1200,7 @@
   document.getElementById("scrapedPortalFilter").addEventListener("change", onScrapedFilterChange);
   document.getElementById("scrapedTierFilter").addEventListener("change", onScrapedFilterChange);
   document.getElementById("scrapedEligibilityFilter").addEventListener("change", onScrapedFilterChange);
+  document.getElementById("scrapedSort").addEventListener("change", onScrapedFilterChange);
   document.getElementById("hideExpiredCheck").addEventListener("change", onScrapedFilterChange);
   document.getElementById("maxAgeDays").addEventListener("input", onScrapedFilterChange);
 
@@ -1208,6 +1248,7 @@
       document.getElementById("s_acceptable_locations").value = (cfg.acceptableLocations || []).join("\n");
       document.getElementById("s_linkedin_pages").value = cfg.linkedinMaxPages || 1;
       document.getElementById("s_jobstreet_pages").value = cfg.jobstreetMaxPages || 2;
+      document.getElementById("s_profile_skills").value = (cfg.profileSkills || []).join("\n");
       settingsBackdrop.classList.add("open");
     }).catch(function () { toast("Could not reach the local server"); });
   });
@@ -1223,6 +1264,7 @@
       acceptableLocations: linesToArray(document.getElementById("s_acceptable_locations").value),
       linkedinMaxPages: parseInt(document.getElementById("s_linkedin_pages").value, 10) || 1,
       jobstreetMaxPages: parseInt(document.getElementById("s_jobstreet_pages").value, 10) || 2,
+      profileSkills: linesToArray(document.getElementById("s_profile_skills").value),
     };
     if (!body.keywords.length && !confirm("No keywords set - \"Run scraper now\" won't find anything until you add some. Save anyway?")) return;
     fetch("/api/config", {

@@ -66,8 +66,11 @@ const JOBSTREET_MAX_PAGES = CONFIG.jobstreetMaxPages;
 const IDEAL_LOCATIONS = CONFIG.idealLocations;
 const ACCEPTABLE_LOCATIONS = CONFIG.acceptableLocations;
 
+// Skill/domain keywords used for the offline fit score - see computeFitScore.
+const PROFILE_SKILLS = CONFIG.profileSkills || [];
+
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-const CSV_HEADER = 'found_date,portal,source_type,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,requirements,eligibility,url\n';
+const CSV_HEADER = 'found_date,portal,source_type,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,requirements,eligibility,deadline,deadline_iso,fit_score,url\n';
 
 // ---------------------------------------------------------------------------
 // bun CLI helper (LinkedIn)
@@ -418,6 +421,76 @@ function extractRequirements(text) {
   return '';
 }
 
+// ---------------------------------------------------------------------------
+// Deadline extraction - pure date-pattern matching, no AI involved. Looks
+// for a deadline-ish keyword (English or Indonesian) and grabs the nearest
+// date-shaped text after it. Best-effort: postings phrase this too many
+// ways for perfect recall, and this only tries to PARSE a small set of
+// common formats into ISO (so the dashboard can flag "closing soon"/
+// "closed") - if parsing fails, the raw matched text is kept so it's still
+// readable even when the date math isn't available.
+// ---------------------------------------------------------------------------
+const MONTH_NAMES = {
+  january: 0, januari: 0, jan: 0, february: 1, februari: 1, feb: 1,
+  march: 2, maret: 2, mar: 2, april: 3, apr: 3,
+  may: 4, mei: 4, june: 5, juni: 5, jun: 5, july: 6, juli: 6, jul: 6,
+  august: 7, agustus: 7, aug: 7,
+  september: 8, sept: 8, sep: 8, october: 9, oktober: 9, oct: 9,
+  november: 10, nov: 10, december: 11, desember: 11, dec: 11,
+};
+const DEADLINE_KEYWORD = /(?:deadline|batas\s*(?:waktu\s*)?(?:pendaftaran|lamaran|akhir)?|closing\s*date|apply\s*(?:by|before)|daftar\s*(?:paling\s*lambat|sebelum|maksimal)|pendaftaran\s*(?:ditutup|paling\s*lambat|berakhir)|berakhir(?:\s*pada)?|expir(?:es|ed|y)(?:\s*(?:on|date))?)/gi;
+const DATE_SHAPE = /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})|(\d{4})-(\d{2})-(\d{2})|(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/;
+
+function dateMatchToIso(dm) {
+  try {
+    if (dm[1] && dm[2] && dm[3]) {
+      const month = MONTH_NAMES[dm[2].toLowerCase()];
+      if (month == null) return '';
+      return new Date(Date.UTC(parseInt(dm[3], 10), month, parseInt(dm[1], 10))).toISOString().slice(0, 10);
+    }
+    if (dm[4] && dm[5] && dm[6]) return `${dm[4]}-${dm[5]}-${dm[6]}`;
+    if (dm[7] && dm[8] && dm[9]) {
+      const year = dm[9].length === 2 ? `20${dm[9]}` : dm[9];
+      return `${year}-${dm[8].padStart(2, '0')}-${dm[7].padStart(2, '0')}`; // dd/mm/yyyy (ID convention)
+    }
+  } catch { /* fall through to '' below */ }
+  return '';
+}
+
+function extractDeadline(text) {
+  if (!text) return { raw: '', iso: '' };
+  const re = new RegExp(DEADLINE_KEYWORD.source, 'gi');
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const windowText = text.slice(m.index, m.index + 100);
+    const dm = windowText.match(DATE_SHAPE);
+    if (dm) return { raw: dm[0], iso: dateMatchToIso(dm) };
+  }
+  return { raw: '', iso: '' };
+}
+
+// ---------------------------------------------------------------------------
+// Offline fit score - keyword overlap between the posting text and your
+// profile's skill/domain list (job_scraper/scraper_config.json's
+// profileSkills, editable via Search settings). This is NOT the same as
+// Claude actually reading and judging a posting (that's what /rank does) -
+// it's a cheap, fully offline proxy: more of your skills mentioned = more
+// likely worth a closer look. Capped at MATCH_CAP matches for a 100 score
+// so a handful of real hits already reads as a strong signal, rather than
+// requiring an unrealistic number of exact keyword hits.
+// ---------------------------------------------------------------------------
+const FIT_MATCH_CAP = 8;
+
+function computeFitScore(text) {
+  if (!text || !PROFILE_SKILLS.length) return null;
+  const lower = text.toLowerCase();
+  let hits = 0;
+  for (const skill of PROFILE_SKILLS) {
+    if (skill && lower.includes(skill.toLowerCase())) hits++;
+  }
+  return Math.min(100, Math.round((hits / FIT_MATCH_CAP) * 100));
+}
+
 // Consolidate same company+title posted across multiple cities into one row,
 // instead of presenting each city as a separate "new" listing.
 function consolidateMassPostings(jobs) {
@@ -482,6 +555,9 @@ function appendRow(job) {
     job.description || '',
     job.requirements || '',
     job.eligibility || '',
+    job.deadline || '',
+    job.deadline_iso || '',
+    job.fit_score == null ? '' : job.fit_score,
     job.url,
   ].map(csvEscape).join(',');
   appendFileSync(LOG_PATH, row + '\n', 'utf-8');
@@ -744,10 +820,16 @@ async function main() {
     job.description = fullText;
     job.requirements = extractRequirements(fullText);
     job.eligibility = classifyEligibility(`${job.title} ${fullText}`);
+    const deadline = extractDeadline(fullText);
+    job.deadline = deadline.raw;
+    job.deadline_iso = deadline.iso;
+    job.fit_score = computeFitScore(`${job.title} ${fullText}`);
     const elig = job.eligibility === 'student_ok' ? 'mahasiswa OK'
       : job.eligibility === 'graduate_required' ? 'perlu lulus'
       : job.eligibility === 'unclear' ? 'campuran' : '-';
-    console.log(`  [detail] ${job.portal}: ${job.title} - ${job.company} (${elig})`);
+    const fitTxt = job.fit_score == null ? '' : `, fit ${job.fit_score}`;
+    const deadlineTxt = job.deadline ? `, deadline ${job.deadline}` : '';
+    console.log(`  [detail] ${job.portal}: ${job.title} - ${job.company} (${elig}${fitTxt}${deadlineTxt})`);
   }
 
   const consolidated = consolidateMassPostings(dedupedThisRun);

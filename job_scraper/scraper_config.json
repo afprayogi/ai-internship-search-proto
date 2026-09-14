@@ -35,5 +35,15 @@
     "bandung",
     "yogyakarta",
     "remote"
+  ],
+  "profileSkills": [
+    "Python", "PyTorch", "TensorFlow", "Scikit-learn", "OpenCV", "YOLO", "ONNX",
+    "ESP32", "Arduino", "ATmega", "STM32", "Raspberry Pi", "embedded system",
+    "JavaScript", "Next.js", "Flask", "Flutter", "PHP", "SQL", "C++", "Dart", "Node-RED",
+    "AIoT", "MLOps", "machine learning", "computer vision", "artificial intelligence",
+    "industrial automation", "automation", "robotics", "PLC", "SCADA", "control system",
+    "IoT", "sensor", "MQTT", "MODBUS", "OPC-UA",
+    "electrical engineering", "instrumentation", "maintenance",
+    "disaster", "climate", "early warning", "monitoring system"
   ]
 }

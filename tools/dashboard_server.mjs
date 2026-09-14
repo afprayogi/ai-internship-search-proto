@@ -53,7 +53,8 @@ const ENV_PATH = path.join(ROOT, '.env');
 const TRACKER_FIELDS = ['date', 'company', 'sector', 'role', 'role_type', 'channel', 'status',
   'contact_person', 'fit_rating', 'notes', 'cv_file', 'cover_letter_file', 'source'];
 const SCRAPED_FIELDS = ['found_date', 'portal', 'source_type', 'title', 'company', 'location', 'location_tier',
-  'employment_type_hint', 'salary', 'posted_date', 'description', 'requirements', 'eligibility', 'url'];
+  'employment_type_hint', 'salary', 'posted_date', 'description', 'requirements', 'eligibility',
+  'deadline', 'deadline_iso', 'fit_score', 'url'];
 
 // ---------------------------------------------------------------------------
 // CSV helpers (mirrors the parser/escaper in dashboard.html - kept in sync by
