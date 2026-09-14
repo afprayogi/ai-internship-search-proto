@@ -33,6 +33,19 @@ State how many jobs will be ranked before proceeding.
 
 ---
 
+## Step 1.5: Offline Pre-Filter (fork-specific, optional)
+
+This fork also ships a separate, non-AI offline scraper (`tools/offline_scraper.mjs`) that writes to `job_scraper/offline_jobs_log.csv` with its own independent dedup state - it overlaps with `/scrape`'s postings only partially, sometimes not at all. When a candidate here is *also* in that file, its cheap keyword-based signals (`eligibility`, `deadline_iso`, `fit_score`) can save an agent call; when it isn't, this step changes nothing. Never treat a missing file or zero matches as an error - just proceed to Step 2 as if this step didn't exist.
+
+1. If `job_scraper/offline_jobs_log.csv` exists, read it and build a lookup by `url`.
+2. For each Step 1 candidate, check whether its `url` (from `seen_jobs.json`) matches a row:
+   - `eligibility: graduate_required` → exclude before spending an agent call. This is a keyword heuristic, not a real read of the posting - the excluded-list reason must say so ("graduate required (offline pre-filter, keyword heuristic - re-check manually if this looks wrong)"), never presented as a confirmed fact.
+   - `deadline_iso` already in the past → exclude as expired (same treatment as Step 3's deadline-passed rule) without needing to fetch the posting at all.
+   - Otherwise → keep as a normal Step 2 candidate. If a `fit_score` is present, pass it into that job's Step 2 prompt as a labeled hint only - "Offline keyword-overlap fit score: `<N>`/100 (not a substitute for actually reading the posting)" - never let it change or skip the agent's own scoring.
+3. Jobs excluded here skip Step 2 entirely and go straight into Step 5's "Excluded" table, same as a location/language veto.
+
+---
+
 ## Step 2: Batch-Fetch and Score
 
 Dispatch parallel `general-purpose` agents via the **Agent tool**, ~5 jobs per agent (a single agent is fine for ≤5 jobs). Token-efficiency rules, consistent with `/apply`:
@@ -116,6 +129,7 @@ Ranked <N> new postings (<X> shortlisted, <Y> below threshold, <Z> expired/vetoe
 - <Title> at <Company> - location FAIL: requires relocation - [Link](...)
 - <Title> at <Company> - language FAIL: requires fluent Polish (not in your Languages table) - [Link](...)
 - <Title> at <Company> - expired <date> - [Link](...)
+- <Title> at <Company> - graduate required (offline pre-filter, keyword heuristic - re-check manually if this looks wrong) - [Link](...)
 ```
 
 Rules for the presentation:
@@ -137,3 +151,4 @@ Rules for the presentation:
 4. **Deal-breakers veto scores.** A 90-point job that fails a location or language deal-breaker is excluded, not ranked first.
 5. **Honest scoring.** Gaps are reported per job; a low-scoring posting is presented as such. The score bands and weights come from `04-job-evaluation.md` - if the user disagrees with a ranking, the fix is updating their profile or the framework, not bending scores. Gaps are reported (Step 5) and persisted with it (Step 4), so the honest read outlives the terminal output.
 6. **State stays consistent.** `seen_jobs.json` fields are only added, never restructured, so `/scrape`'s dedup keeps working; the tracker is read-only for this command.
+7. **The offline pre-filter (Step 1.5) is a cost-saver, not a scorer.** It only ever *excludes before fetching* (graduate-required, expired) or *hints* (`fit_score` passed to the agent as a labeled data point) - it never assigns a rank score, verdict, or PASS/FAIL/FLAG itself, and it never runs when `job_scraper/offline_jobs_log.csv` doesn't exist or has no matching URLs.
