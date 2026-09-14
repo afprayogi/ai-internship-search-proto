@@ -70,7 +70,7 @@ const ACCEPTABLE_LOCATIONS = CONFIG.acceptableLocations;
 const PROFILE_SKILLS = CONFIG.profileSkills || [];
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-const CSV_HEADER = 'found_date,portal,source_type,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,requirements,eligibility,deadline,deadline_iso,fit_score,url\n';
+const CSV_HEADER = 'found_date,portal,source_type,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,requirements,eligibility,deadline,deadline_iso,fit_score,apply_method,url\n';
 
 // ---------------------------------------------------------------------------
 // bun CLI helper (LinkedIn)
@@ -491,6 +491,33 @@ function computeFitScore(text) {
   return Math.min(100, Math.round((hits / FIT_MATCH_CAP) * 100));
 }
 
+// ---------------------------------------------------------------------------
+// How to apply - scans the full posting text itself for a Google Form link,
+// another external URL, or an email address mentioned near an apply-ish
+// word. Works the same for both portals and needs no login, unlike relying
+// on LinkedIn's own applyUrl: LinkedIn's public guest pages never expose the
+// real apply destination (the "Lamar"/"Apply" button just opens a sign-up/
+// login wall for a logged-out visitor - checked directly, it's always a
+// sign-up-modal trigger, not a real link, so that field would be null 100%
+// of the time and isn't worth reading). Falls back to "via the portal
+// itself" when nothing else is mentioned in the text.
+// ---------------------------------------------------------------------------
+const GOOGLE_FORM_PATTERN = /\b(?:docs\.google\.com\/forms\/[^\s)"'<>]+|forms\.gle\/[^\s)"'<>]+)/i;
+const GENERIC_URL_PATTERN = /\bhttps?:\/\/[^\s)"'<>]+/gi;
+const EMAIL_NEAR_APPLY = /(?:kirim|send|apply|lamar|cv|resume|daftar)[^.\n]{0,60}?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i;
+
+function detectApplyMethod(text, portal) {
+  if (!text) return portal === 'jobstreet' ? 'Via JobStreet' : 'Via LinkedIn (perlu login)';
+  const form = text.match(GOOGLE_FORM_PATTERN);
+  if (form) return `Google Form: ${form[0]}`;
+  const urls = text.match(GENERIC_URL_PATTERN) || [];
+  const external = urls.find((u) => !/linkedin\.com|jobstreet\.com/i.test(u));
+  if (external) return `Link lain di postingan: ${external}`;
+  const email = text.match(EMAIL_NEAR_APPLY);
+  if (email) return `Kirim CV via email: ${email[1]}`;
+  return portal === 'jobstreet' ? 'Via JobStreet (klik Open)' : 'Via LinkedIn (klik Open, perlu login)';
+}
+
 // Consolidate same company+title posted across multiple cities into one row,
 // instead of presenting each city as a separate "new" listing.
 function consolidateMassPostings(jobs) {
@@ -558,6 +585,7 @@ function appendRow(job) {
     job.deadline || '',
     job.deadline_iso || '',
     job.fit_score == null ? '' : job.fit_score,
+    job.apply_method || '',
     job.url,
   ].map(csvEscape).join(',');
   appendFileSync(LOG_PATH, row + '\n', 'utf-8');
@@ -824,12 +852,13 @@ async function main() {
     job.deadline = deadline.raw;
     job.deadline_iso = deadline.iso;
     job.fit_score = computeFitScore(`${job.title} ${fullText}`);
+    job.apply_method = detectApplyMethod(fullText, job.portal);
     const elig = job.eligibility === 'student_ok' ? 'mahasiswa OK'
       : job.eligibility === 'graduate_required' ? 'perlu lulus'
       : job.eligibility === 'unclear' ? 'campuran' : '-';
     const fitTxt = job.fit_score == null ? '' : `, fit ${job.fit_score}`;
     const deadlineTxt = job.deadline ? `, deadline ${job.deadline}` : '';
-    console.log(`  [detail] ${job.portal}: ${job.title} - ${job.company} (${elig}${fitTxt}${deadlineTxt})`);
+    console.log(`  [detail] ${job.portal}: ${job.title} - ${job.company} (${elig}${fitTxt}${deadlineTxt}) [${job.apply_method}]`);
   }
 
   const consolidated = consolidateMassPostings(dedupedThisRun);

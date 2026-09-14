@@ -1116,6 +1116,14 @@
     };
     var SOURCE_TYPE_LABEL = { job_listing: "📋 Listing", feed_post: "💬 Post" };
 
+    function applyMethodLabel(method) {
+      if (!method) return "";
+      if (/^google form/i.test(method)) return "📝 Google Form";
+      if (/^kirim cv via email/i.test(method)) return "📧 Email";
+      if (/^link lain/i.test(method)) return "🔗 Link lain";
+      return ""; // "Via JobStreet"/"Via LinkedIn" - nothing extra beyond the Open link itself
+    }
+
     function fitBadge(score) {
       if (score === "" || score == null) return '<span class="elig-badge elig-none">—</span>';
       var n = Number(score);
@@ -1152,7 +1160,9 @@
         "<td>" + fitBadge(r.fit_score) + "</td>" +
         "<td>" + deadlineCell(r) + "</td>" +
         "<td>" + escapeHtml(salary) + "</td>" +
-        '<td>' + (r.url ? '<a class="source-link" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Open</a>' : "—") + "</td>" +
+        '<td>' + (r.url ? '<a class="source-link" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Open</a>' : "—") +
+          (applyMethodLabel(r.apply_method) ? '<br><span class="settings-help" title="' + escapeHtml(r.apply_method) + '">' + applyMethodLabel(r.apply_method) + '</span>' : "") +
+        "</td>" +
         '<td class="row-actions"><button data-track="' + i + '">+ Track</button></td>' +
         "</tr>";
     }).join("");
