@@ -398,6 +398,116 @@ async function fetchGlintsDetail(url) {
 }
 
 // ---------------------------------------------------------------------------
+// LinkedIn feed-post search - optional, only runs when LINKEDIN_LI_AT_COOKIE
+// is set in .env (via the dashboard's "LinkedIn feed login" setup). Separate
+// from the LinkedIn Jobs search above: this covers magang/internship
+// openings shared as ordinary feed posts rather than formal job postings,
+// which the public jobs-guest API never sees at all.
+//
+// Uses your own already-logged-in session cookie - automated access like
+// this is against LinkedIn's Terms of Service and carries real account
+// risk, which the dashboard's cookie-setup modal states before you ever
+// enter a cookie. Kept deliberately conservative: hard caps on total
+// requests per run, a real delay between every single one, and an
+// immediate full stop the moment a response looks like a login/checkpoint
+// wall (a sign the cookie may be flagged or expired) rather than
+// continuing to hammer it.
+//
+// LinkedIn's post pages are a "Server-Driven UI" JSON tree embedded as
+// HTML-entity-escaped JSON, not a simple data payload like Jobs/JobStreet/
+// Glints - confirmed by fetching real pages directly before writing this.
+// Caption text only extracts reliably for some post types (plain original
+// posts); reshared "share" posts nest their content differently and this
+// can come back empty for those - checked against two real posts of each
+// kind while building this. The post still gets found and linked either
+// way, just without an extracted description to run eligibility/
+// requirements/deadline against when extraction comes up empty.
+// ---------------------------------------------------------------------------
+const FEED_MAX_DETAIL_PER_RUN = 15;
+const FEED_MAX_SEARCHES_PER_RUN = 15;
+const FEED_LOGIN_WALL_PATTERN = /authwall|challengesV2|checkpoint\/challenge|Sign in to LinkedIn to continue|session_redirect/i;
+const FEED_BOILERPLATE_TEXT = new Set([
+  'Settings & Privacy', 'Help', 'Language', 'Posts & Activity', 'Job Posting Account',
+  'Hire on LinkedIn', 'Sell with LinkedIn', 'Post a job for free', 'Advertise on LinkedIn',
+  'Elevate your small business', 'Learn with LinkedIn', 'Admin Center', 'My Apps',
+]);
+
+function decodeHtmlEntitiesLoose(str) {
+  return str
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+// A real authenticated page here is always well over a megabyte - a much
+// smaller response is itself a signal something's wrong, on top of the
+// explicit login/checkpoint text patterns.
+function isLinkedinLoginWall(html) {
+  return FEED_LOGIN_WALL_PATTERN.test(html) || html.length < 20000;
+}
+
+async function fetchLinkedinFeedSearch(query, cookie) {
+  const url = `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent(query)}&origin=GLOBAL_SEARCH_HEADER`;
+  let html;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+        Cookie: `li_at=${cookie}`,
+      },
+    });
+    html = await res.text();
+  } catch (err) {
+    console.error(`  [error] linkedin-feed "${query}": ${String(err.message || err).split('\n')[0]}`);
+    return { urls: [], blocked: false };
+  }
+  if (isLinkedinLoginWall(html)) return { urls: [], blocked: true };
+
+  const normalized = html.split('\\/').join('/');
+  const matches = normalized.match(/https:\/\/www\.linkedin\.com\/posts\/[^"\\]+/g) || [];
+  const urls = [...new Set(matches.map((u) => u.replace(/[?&]utm_.*$/, '').replace(/\\+$/, '')))];
+  return { urls, blocked: false };
+}
+
+async function fetchLinkedinPostDetail(url, cookie) {
+  let html;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Cookie: `li_at=${cookie}`,
+      },
+      redirect: 'follow',
+    });
+    html = await res.text();
+  } catch {
+    return { text: '', blocked: false };
+  }
+  if (isLinkedinLoginWall(html)) return { text: '', blocked: true };
+
+  const re = /&quot;text&quot;:&quot;((?:[^&]|&(?!quot;))*?)&quot;,&quot;attributesV2&quot;:\[\],&quot;accessibilityTextAttributesV2&quot;:\[\],&quot;accessibilityText&quot;:null,&quot;\$recipeTypes&quot;:\[[^\]]*\],&quot;\$type&quot;:&quot;com\.linkedin\.voyager\.dash\.common\.text\.TextViewModel&quot;/g;
+  const matches = [...html.matchAll(re)]
+    .map((m) => decodeHtmlEntitiesLoose(m[1]))
+    .filter((t) => t && !FEED_BOILERPLATE_TEXT.has(t) && !/^Reactivate Premium/i.test(t));
+  const text = matches.length ? matches[matches.length - 1] : '';
+  return { text, blocked: false };
+}
+
+// Turns a post URL's slug into a readable fallback title when the caption
+// couldn't be extracted, e.g. ".../posts/calling-for-all-fresh-graduate..."
+// -> "Calling for all fresh graduate".
+function titleFromPostSlug(url) {
+  const m = url.match(/\/posts\/([^/?]+)/);
+  if (!m) return 'LinkedIn post';
+  const slug = m[1].replace(/^[a-z0-9-]+_/i, '').replace(/-(activity|ugcPost|share)-\d+.*$/i, '');
+  const words = slug.split('-').filter(Boolean);
+  if (!words.length) return 'LinkedIn post';
+  return (words[0][0].toUpperCase() + words[0].slice(1) + ' ' + words.slice(1).join(' ')).trim();
+}
+
+// ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
 
@@ -425,10 +535,27 @@ function loadTrackerLines() {
   }
 }
 
+// Strips common Indonesian legal-entity prefixes/suffixes so "PT. Astra
+// International Tbk" and "Astra International" are recognized as the same
+// company - the single biggest real-world source of missed already-applied
+// matches, since postings and the tracker rarely spell a company name the
+// same way twice. The normalized text is only used as the search needle;
+// the tracker's raw lines are searched as-is, so a normalized needle like
+// "astra international" still matches inside the untouched raw line.
+function normalizeCompanyText(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/^(pt|cv|ud|pd|cs|pd)\.?\s*/i, '')
+    .replace(/\s*\b(tbk|persero)\b\.?\s*$/i, '')
+    .replace(/[.,()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function alreadyApplied(trackerLines, company, title) {
   if (!trackerLines.length) return false;
-  const c = (company || '').toLowerCase();
-  const t = (title || '').toLowerCase();
+  const c = normalizeCompanyText(company);
+  const t = (title || '').toLowerCase().trim();
   if (!c || !t) return false;
   return trackerLines.some((line) => line.includes(c) && line.includes(t));
 }
@@ -921,6 +1048,46 @@ async function main() {
     await sleep(400 + Math.floor(Math.random() * 400)); // jeda sopan antar request
   }
 
+  const feedCookie = process.env.LINKEDIN_LI_AT_COOKIE;
+  if (feedCookie) {
+    console.log('\nLinkedIn feed-post search aktif (pakai sesi login kamu sendiri - hati-hati, ini di luar ToS LinkedIn)...');
+    let feedSearchCount = 0;
+    let feedDetailCount = 0;
+    let feedBlocked = false;
+    for (const q of KEYWORDS) {
+      if (feedBlocked || feedSearchCount >= FEED_MAX_SEARCHES_PER_RUN || feedDetailCount >= FEED_MAX_DETAIL_PER_RUN) break;
+      feedSearchCount++;
+      console.log(`  LinkedIn feed: "${q}"`);
+      const { urls, blocked } = await fetchLinkedinFeedSearch(q, feedCookie);
+      if (blocked) {
+        console.error('  [linkedin-feed] Kena halaman login/checkpoint - berhenti total buat run ini. Cek akun LinkedIn kamu, cookie mungkin udah gak valid/expired.');
+        feedBlocked = true;
+        break;
+      }
+      await sleep(1500 + Math.floor(Math.random() * 1000));
+      let newish = 0;
+      for (const url of urls) {
+        if (feedDetailCount >= FEED_MAX_DETAIL_PER_RUN) break;
+        if (seen[url]) continue; // don't spend a detail-fetch (and more account risk) on something already logged
+        const { text, blocked: detailBlocked } = await fetchLinkedinPostDetail(url, feedCookie);
+        if (detailBlocked) {
+          console.error('  [linkedin-feed] Kena halaman login/checkpoint - berhenti total buat run ini.');
+          feedBlocked = true;
+          break;
+        }
+        feedDetailCount++;
+        newish++;
+        collected.push({
+          portal: 'linkedin', keyword: q, source_type: 'feed_post',
+          title: text ? text.slice(0, 80) : titleFromPostSlug(url),
+          company: '', location: '', date: '', url, description: text,
+        });
+        await sleep(1500 + Math.floor(Math.random() * 1000));
+      }
+      logQueryProgress(urls.length, newish);
+    }
+  }
+
   // Dedup against this script's own memory + skip anything already applied to.
   const fresh = collected.filter((job) => {
     if (!job.url || seen[job.url]) return false;
@@ -945,9 +1112,14 @@ async function main() {
     console.log(`\nMembuka detail ${dedupedThisRun.length} lowongan baru (buat persyaratan + status mahasiswa/lulusan)...`);
   }
   for (const job of dedupedThisRun) {
-    job.source_type = 'job_listing';
+    if (!job.source_type) job.source_type = 'job_listing';
     let fullText = job.description || '';
-    if (job.portal === 'linkedin') {
+    if (job.source_type === 'feed_post') {
+      // Already fully fetched (search + detail combined in one pass, above -
+      // a feed post's URL only exists once its detail page has already been
+      // read, unlike the other portals where search and detail are separate
+      // steps). Nothing more to do here.
+    } else if (job.portal === 'linkedin') {
       const detail = runCliDetail(LINKEDIN_CLI, job.url, `${job.company} - ${job.title}`);
       if (detail && detail.description) fullText = detail.description;
       await sleep(500 + Math.floor(Math.random() * 500));

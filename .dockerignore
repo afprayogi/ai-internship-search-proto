@@ -1,0 +1,32 @@
+# Only tools/ and .agents/skills/linkedin-search/ get COPYed into the image
+# (see Dockerfile) - this file matters mainly for `docker build .`'s build
+# context upload, so excluding heavy/irrelevant paths here keeps that fast.
+.git
+.github
+node_modules
+tools/*.exe
+.env
+.env.example
+
+# Personal content that never belongs in a shareable image
+cv/
+cover_letters/
+documents/
+templates/
+tests/
+upskill/
+gmail_sync/
+reports/
+.claude/projects/
+.claude/skills/job-application-assistant/
+job_scraper/*.csv
+job_scraper/*.json
+job_scraper/*.md
+job_search_tracker.csv
+salary_data.json
+*_BehavioralReport.pdf
+linkedin_Profile.pdf
+*.jpg
+*.jpeg
+*.png
+*.pdf

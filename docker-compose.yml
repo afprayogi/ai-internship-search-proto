@@ -1,0 +1,14 @@
+services:
+  dashboard:
+    build: .
+    image: job-search-dashboard
+    container_name: job-search-dashboard
+    ports:
+      - "4870:4870"
+    volumes:
+      # Real data lives on the host, not in the image - the container reads/
+      # writes these the same way the plain `bun run` version does.
+      - ./job_scraper:/app/job_scraper
+      - ./job_search_tracker.csv:/app/job_search_tracker.csv
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
