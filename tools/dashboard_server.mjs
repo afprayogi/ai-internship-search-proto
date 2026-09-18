@@ -53,7 +53,7 @@ const SEEN_PATH = path.join(ROOT, 'job_scraper', 'offline_seen.json');
 
 const TRACKER_FIELDS = ['date', 'company', 'sector', 'role', 'role_type', 'channel', 'status',
   'contact_person', 'fit_rating', 'notes', 'cv_file', 'cover_letter_file', 'source'];
-const SCRAPED_FIELDS = ['found_date', 'portal', 'source_type', 'title', 'company', 'location', 'location_tier',
+const SCRAPED_FIELDS = ['found_date', 'portal', 'source_type', 'keyword_group', 'title', 'company', 'location', 'location_tier',
   'employment_type_hint', 'salary', 'posted_date', 'description', 'requirements', 'eligibility',
   'deadline', 'deadline_iso', 'fit_score', 'apply_method', 'url'];
 
@@ -156,18 +156,21 @@ async function pumpStream(stream) {
   if (leftover) pushLog(leftover);
 }
 
-function startScraperRun() {
+function startScraperRun(group) {
   if (runState.running) return { started: false, reason: 'already_running' };
   runState.running = true;
   runState.log = [];
   runState.exitCode = null;
   runState.startedAt = new Date().toISOString();
-  pushLog(`[dashboard] Menjalankan tools/offline_scraper.mjs...`);
+  pushLog(group
+    ? `[dashboard] Menjalankan tools/offline_scraper.mjs (grup: ${group})...`
+    : `[dashboard] Menjalankan tools/offline_scraper.mjs (semua grup aktif)...`);
 
   const proc = Bun.spawn(['bun', 'run', SCRAPER_PATH], {
     cwd: ROOT,
     stdout: 'pipe',
     stderr: 'pipe',
+    env: { ...process.env, SCRAPER_GROUP: group || '' },
   });
 
   pumpStream(proc.stdout);
@@ -193,7 +196,14 @@ function loadConfig() {
   }
   try {
     const onDisk = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
-    return { ...DEFAULT_CONFIG, ...onDisk };
+    const merged = { ...DEFAULT_CONFIG, ...onDisk };
+    // Same migration as offline_scraper.mjs's loadConfig() - a pre-groups
+    // config only had a flat `keywords` array, so the Settings panel needs
+    // this too or it would show zero groups for an old config file.
+    if (!onDisk.keywordGroups && Array.isArray(onDisk.keywords)) {
+      merged.keywordGroups = [{ name: 'Default', enabled: true, keywords: onDisk.keywords }];
+    }
+    return merged;
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -310,11 +320,35 @@ function json(data, init) {
   });
 }
 
+const MANIFEST = JSON.stringify({
+  name: 'Job Search Dashboard', short_name: 'JobSearch', start_url: '/', display: 'standalone',
+  background_color: '#f5f6fb', theme_color: '#4f46e5',
+  icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
+});
+const APP_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#4f46e5"/><text x="50" y="66" font-size="52" text-anchor="middle">🔍</text></svg>';
+const SW_JS = "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',()=>{});";
+
 const server = Bun.serve({
-  hostname: '127.0.0.1',
+  // 0.0.0.0 so this is reachable from your phone on the same Wi-Fi (as
+  // http://<PC's LAN IP>:4870) - required for the PWA install flow, which
+  // needs the phone's browser to load the page directly. Still never
+  // reachable from outside your local network (no router port-forwarding
+  // here), but anyone else on the same Wi-Fi could reach it too - fine on a
+  // trusted home network, worth knowing on a shared/public one.
+  hostname: '0.0.0.0',
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
+
+    if (url.pathname === '/manifest.json') {
+      return new Response(MANIFEST, { headers: { 'Content-Type': 'application/manifest+json' } });
+    }
+    if (url.pathname === '/sw.js') {
+      return new Response(SW_JS, { headers: { 'Content-Type': 'application/javascript' } });
+    }
+    if (url.pathname === '/icon.svg') {
+      return new Response(APP_ICON_SVG, { headers: { 'Content-Type': 'image/svg+xml' } });
+    }
 
     if (url.pathname === '/' || url.pathname === '/index.html') {
       return new Response(readFileSync(DASHBOARD_HTML_PATH, 'utf-8'), {
@@ -358,14 +392,15 @@ const server = Bun.serve({
     }
     if (url.pathname === '/api/config' && req.method === 'POST') {
       const body = await req.json().catch(() => null);
-      if (!body || !Array.isArray(body.keywords)) {
-        return json({ error: 'keywords array required' }, { status: 400 });
+      if (!body || !Array.isArray(body.keywordGroups)) {
+        return json({ error: 'keywordGroups array required' }, { status: 400 });
       }
       return json(saveConfig(body));
     }
 
     if (url.pathname === '/api/scraper/run' && req.method === 'POST') {
-      return json(startScraperRun());
+      const body = await req.json().catch(() => ({}));
+      return json(startScraperRun(typeof body.group === 'string' ? body.group : ''));
     }
     if (url.pathname === '/api/scraper/state' && req.method === 'GET') {
       return json({ running: runState.running, exitCode: runState.exitCode, startedAt: runState.startedAt });
@@ -413,4 +448,14 @@ const server = Bun.serve({
 });
 
 console.log(`Job search dashboard: http://127.0.0.1:${server.port}/`);
+try {
+  const nets = require('node:os').networkInterfaces();
+  for (const list of Object.values(nets)) {
+    for (const net of list) {
+      if (net.family === 'IPv4' && !net.internal) {
+        console.log(`Dari HP (WiFi sama): http://${net.address}:${server.port}/  -  buka lalu "Add to Home Screen"`);
+      }
+    }
+  }
+} catch { /* LAN IP display is a convenience only - never block startup on it */ }
 console.log('Tekan Ctrl+C di jendela ini untuk mematikan server.');

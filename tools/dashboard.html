@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Job Search Dashboard</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<meta name="theme-color" content="#4f46e5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lexend:wght@600;700;800&display=swap" rel="stylesheet">
@@ -287,8 +294,22 @@
     border: 1px solid #23253a;
   }
   .log-box.show { display: block; }
-  textarea.keyword-list { min-height: 220px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+  textarea.keyword-list { min-height: 140px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; }
   .settings-help { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+  .modal.wide { max-width: 780px; }
+  .group-header-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  #keywordGroupsContainer { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+  .group-card {
+    border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px;
+    background: var(--card-bg-2); transition: opacity 0.15s var(--ease);
+  }
+  .group-card:has(.g_enabled:not(:checked)) { opacity: 0.55; }
+  .group-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .group-card-head .g_name {
+    flex: 1; min-width: 160px; font: inherit; font-size: 13px; font-weight: 700; padding: 7px 10px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card-bg); color: var(--text);
+  }
+  .group-card-head button { padding: 6px 12px; font-size: 12px; box-shadow: none; }
   .risk-box {
     background: color-mix(in srgb, var(--interview) 12%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--interview) 45%, var(--border));
     color: var(--text); border-radius: var(--radius-sm);
@@ -384,6 +405,7 @@
       <div class="table-toolbar" style="margin-top:14px;">
         <input type="text" id="scrapedSearch" placeholder="Search title, company, or location...">
         <select id="scrapedPortalFilter"><option value="">All portals</option></select>
+        <select id="scrapedGroupFilter"><option value="">All groups</option></select>
         <select id="scrapedTierFilter"><option value="">All location tiers</option></select>
         <select id="scrapedEligibilityFilter">
           <option value="">All eligibility</option>
@@ -551,14 +573,18 @@
 </div>
 
 <div class="modal-backdrop" id="settingsBackdrop">
-  <div class="modal">
+  <div class="modal wide">
     <h2>Search settings</h2>
     <p class="settings-help">Controls what "Run scraper now" searches for. Saved to <code>job_scraper/scraper_config.json</code> and used by <code>run_offline_scraper.bat</code> too.</p>
     <form id="settingsForm">
       <div class="form-grid">
         <div class="full">
-          <label>Keywords (one per line)</label>
-          <textarea class="keyword-list" id="s_keywords"></textarea>
+          <div class="group-header-row">
+            <label style="margin:0;">Keyword groups</label>
+            <button type="button" id="addGroupBtn">+ Tambah grup baru</button>
+          </div>
+          <p class="settings-help">Tiap grup punya keyword sendiri dan bisa dijalanin sendiri-sendiri. Nonaktifin grup (bukan hapus) buat skip sementara tanpa kehilangan keyword-nya - grup nonaktif dilewatin sama tombol "Run scraper now" gabungan, tapi tetap bisa dijalanin manual lewat tombol Run di card-nya.</p>
+          <div id="keywordGroupsContainer"></div>
         </div>
         <div>
           <label>Ideal locations (one per line, no relocation needed)</label>
@@ -589,6 +615,18 @@
     </form>
   </div>
 </div>
+
+<template id="groupCardTemplate">
+  <div class="group-card">
+    <div class="group-card-head">
+      <label class="checkbox-label"><input type="checkbox" class="g_enabled" checked> Aktif</label>
+      <input type="text" class="g_name" placeholder="Nama grup (mis. Magang Elektrik)">
+      <button type="button" class="g_run">▶ Run grup ini</button>
+      <button type="button" class="danger g_delete">🗑️</button>
+    </div>
+    <textarea class="keyword-list g_keywords" placeholder="Satu keyword per baris"></textarea>
+  </div>
+</template>
 
 <div class="modal-backdrop" id="linkedinCookieBackdrop">
   <div class="modal">
@@ -1528,16 +1566,58 @@
     }).catch(function () { toast("Could not reach the local server"); });
   });
 
-  // ---------- settings modal ----------
+  // ---------- settings modal: keyword groups ----------
   var settingsBackdrop = document.getElementById("settingsBackdrop");
+  var groupsContainer = document.getElementById("keywordGroupsContainer");
+  var groupCardTemplate = document.getElementById("groupCardTemplate");
   function linesToArray(text) {
     return text.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
   }
+  function addGroupCard(group) {
+    var g = group || { name: "", enabled: true, keywords: [] };
+    var node = groupCardTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector(".g_name").value = g.name || "";
+    node.querySelector(".g_enabled").checked = g.enabled !== false;
+    node.querySelector(".g_keywords").value = (g.keywords || []).join("\n");
+    node.querySelector(".g_delete").addEventListener("click", function () {
+      var kw = linesToArray(node.querySelector(".g_keywords").value);
+      if (kw.length && !confirm("Hapus grup \"" + (node.querySelector(".g_name").value || "(tanpa nama)") + "\" beserta " + kw.length + " keyword-nya?")) return;
+      node.remove();
+    });
+    node.querySelector(".g_run").addEventListener("click", function () {
+      var name = node.querySelector(".g_name").value.trim();
+      if (!name) { toast("Kasih nama grup ini dulu sebelum di-run"); return; }
+      var kw = linesToArray(node.querySelector(".g_keywords").value);
+      if (!kw.length) { toast("Grup ini belum ada keyword-nya"); return; }
+      settingsBackdrop.classList.remove("open");
+      showTab("scraped");
+      runScraper(name);
+    });
+    groupsContainer.appendChild(node);
+  }
+  function renderGroupCards(groups) {
+    groupsContainer.innerHTML = "";
+    (groups && groups.length ? groups : [{ name: "Default", enabled: true, keywords: [] }]).forEach(addGroupCard);
+  }
+  function collectGroupsFromDom() {
+    return Array.from(groupsContainer.querySelectorAll(".group-card")).map(function (card) {
+      return {
+        name: card.querySelector(".g_name").value.trim() || "Grup tanpa nama",
+        enabled: card.querySelector(".g_enabled").checked,
+        keywords: linesToArray(card.querySelector(".g_keywords").value),
+      };
+    });
+  }
+  document.getElementById("addGroupBtn").addEventListener("click", function () {
+    addGroupCard({ name: "", enabled: true, keywords: [] });
+    groupsContainer.lastElementChild.querySelector(".g_name").focus();
+  });
+
   document.getElementById("settingsBtn").addEventListener("click", function () {
     if (!serverMode) return;
     fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
       scraperConfig = cfg;
-      document.getElementById("s_keywords").value = (cfg.keywords || []).join("\n");
+      renderGroupCards(cfg.keywordGroups || []);
       document.getElementById("s_ideal_locations").value = (cfg.idealLocations || []).join("\n");
       document.getElementById("s_acceptable_locations").value = (cfg.acceptableLocations || []).join("\n");
       document.getElementById("s_linkedin_pages").value = cfg.linkedinMaxPages || 1;
@@ -1552,20 +1632,22 @@
   settingsBackdrop.addEventListener("click", function (e) { if (e.target === settingsBackdrop) settingsBackdrop.classList.remove("open"); });
   document.getElementById("settingsForm").addEventListener("submit", function (e) {
     e.preventDefault();
+    var groups = collectGroupsFromDom();
+    var totalKeywords = groups.reduce(function (sum, g) { return sum + g.keywords.length; }, 0);
     var body = {
-      keywords: linesToArray(document.getElementById("s_keywords").value),
+      keywordGroups: groups,
       idealLocations: linesToArray(document.getElementById("s_ideal_locations").value),
       acceptableLocations: linesToArray(document.getElementById("s_acceptable_locations").value),
       linkedinMaxPages: parseInt(document.getElementById("s_linkedin_pages").value, 10) || 1,
       jobstreetMaxPages: parseInt(document.getElementById("s_jobstreet_pages").value, 10) || 2,
       profileSkills: linesToArray(document.getElementById("s_profile_skills").value),
     };
-    if (!body.keywords.length && !confirm("No keywords set - \"Run scraper now\" won't find anything until you add some. Save anyway?")) return;
+    if (!totalKeywords && !confirm("No keywords set in any group - \"Run scraper now\" won't find anything until you add some. Save anyway?")) return;
     fetch("/api/config", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     }).then(function (r) { return r.json(); }).then(function () {
       settingsBackdrop.classList.remove("open");
-      toast(body.keywords.length ? "Search settings saved" : "Search settings saved (no keywords)");
+      toast(totalKeywords ? "Search settings saved" : "Search settings saved (no keywords)");
     }).catch(function () { toast("Could not save settings"); });
   });
 
@@ -1648,25 +1730,33 @@
     });
     scraperEventSource.onerror = function () { /* connection dropped - log already has what it had */ };
   }
-  document.getElementById("runScraperBtn").addEventListener("click", function () {
+  // Shared by the combined "Run scraper now" button and every per-group
+  // "Run grup ini" button in Search settings - the backend only allows one
+  // run at a time regardless of which trigger started it, so this always
+  // reflects state on the one global button/log box.
+  function runScraper(group) {
     if (!serverMode) return;
-    var btn = this;
+    var btn = document.getElementById("runScraperBtn");
     btn.disabled = true;
-    btn.textContent = "Running...";
-    fetch("/api/scraper/run", { method: "POST" }).then(function (r) { return r.json(); }).then(function (res) {
+    btn.textContent = group ? "Running \"" + group + "\"..." : "Running...";
+    fetch("/api/scraper/run", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ group: group || "" }),
+    }).then(function (r) { return r.json(); }).then(function (res) {
       if (!res.started) {
         toast("A scraper run is already in progress");
         btn.disabled = false;
         btn.textContent = "▶ Run scraper now";
         return;
       }
+      toast(group ? "Running group \"" + group + "\"..." : "Running all active groups...");
       connectLogStream();
     }).catch(function () {
       toast("Could not reach the local server");
       btn.disabled = false;
       btn.textContent = "▶ Run scraper now";
     });
-  });
+  }
+  document.getElementById("runScraperBtn").addEventListener("click", function () { runScraper(""); });
 
   // ---------- tabs ----------
   var tabBtnScraped = document.getElementById("tabBtnScraped");
@@ -1719,6 +1809,9 @@
   }
 
   init();
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(function () { /* PWA install just won't be offered - dashboard still works fine */ });
+  }
 })();
 </script>
 </body>
