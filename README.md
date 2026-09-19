@@ -4,9 +4,13 @@
 
 # AI Job Search Dashboard
 
-*An automated internship search assistant for Indonesia — LinkedIn + JobStreet + Glints scraping, application tracking, and WhatsApp alerts, powered by Claude Code.*
+*An automated internship search assistant for Indonesia — LinkedIn + JobStreet + Glints scraping, application tracking, and WhatsApp alerts, now also as a standalone Android app, powered by Claude Code.*
 
 **Built by [Ahmad Fauzan Prayogi](https://www.linkedin.com/in/ahmad-fauzan-prayogi-39653b1a7/)** — Electrical Automation Engineering student, ITS Surabaya.
+
+<p align="center">
+  <img src="assets/app_icon.svg" alt="App icon" width="96">
+</p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
@@ -151,6 +155,23 @@ Compiles `tools/dashboard_server.mjs` into a standalone `tools\JobSearchDashboar
 
 One caveat: **"Run scraper now" still needs Bun on PATH** even from the `.exe`, since it spawns `tools/offline_scraper.mjs` (and that spawns the LinkedIn CLI) as separate `bun` subprocesses that aren't bundled into the compiled binary. Data storage is unaffected either way — the `.exe` resolves `job_search_tracker.csv`, `job_scraper/offline_jobs_log.csv`, and `job_scraper/scraper_config.json` relative to its own location on disk, same as the `.mjs` version does.
 
+### 4b. Scraper tabs (one tab per job name)
+
+The 🕵️ area is now a row of **tabs, one per scraper** (e.g. "Magang", "Data Analyst"). Each tab has its own name, on/off switch, keyword list and its own **▶ Run** button, and only shows postings found by that scraper (`keyword_group` column in the CSV). **＋** adds a new tab; the old flat `keywords` config migrates automatically into a "Default" tab. **Search settings** keeps the shared options: ideal/acceptable cities, page limits, and your fit-score skills. Keywords, cities, and skills are edited as **tags (chips)**: type + Enter/comma to add, × to remove.
+
+### 4c. Android app (standalone, no PC or server)
+
+A real installable Android app (Capacitor 6) in `mobile-app/`. It runs the **same dashboard UI** and a **browser port of the scraper** directly on the phone: LinkedIn, JobStreet, and Glints searching, eligibility/requirements/deadline detection, fit score, already-applied check, and the tracker, all stored on the phone. Phone-friendly layout: postings become cards, tabs scroll sideways, dialogs are full screen.
+
+- Not available on the phone: LinkedIn feed-post search (needs your cookie) and WhatsApp alerts.
+- Outbound requests go through Capacitor's native HTTP, so no CORS proxy is needed. Portals may still block a phone IP; the run log in the app shows what happened.
+- Build: see [`mobile-app/README.md`](mobile-app/README.md) (needs JDK 17 + Android SDK). Install `mobile-app/android/app/build/outputs/apk/debug/app-debug.apk` on the phone (allow "install unknown apps").
+- The dashboard is also installable as a PWA when the PC server is running (it listens on the LAN, open `http://<PC-IP>:4870/` on the phone).
+
+### 4d. Docker
+
+`Dockerfile` + `docker-compose.yml` run the dashboard server in a container (`docker compose up`, then open `http://localhost:4870/`), with `job_scraper/`, the tracker CSV, and `.env` mounted as volumes. *Note: written but not yet build-tested.*
+
 ### 5. Privacy pre-commit check (recommended)
 
 This repo's personal contact data (phone, email) once got committed and pushed to a public GitHub repo by accident. To make sure that never happens again, there's a Git hook that scans every commit for your real contact info before it's allowed through:
@@ -184,13 +205,16 @@ jobsearch/
 │   ├── offline_scraper.mjs            # Standalone LinkedIn + JobStreet scraper (no Claude)
 │   ├── run_offline_scraper.bat        # Double-click entry point for the offline scraper
 │   ├── scraper_config_defaults.mjs    # Default search keywords/locations/page limits
-│   ├── dashboard.html                 # Dashboard UI - scraped postings + application tracker
+│   ├── dashboard.html                 # Dashboard UI (desktop + phone) - scraper tabs + application tracker
 │   ├── dashboard_server.mjs           # Localhost server behind the dashboard (serves it, runs the scraper, reads/writes CSVs)
 │   ├── build_dashboard_exe.bat        # Compiles dashboard_server.mjs -> JobSearchDashboard.exe (gitignored build artifact)
 │   ├── open_dashboard.bat             # Double-click entry point - runs the .exe if built, else `bun run` the server
 │   ├── start_whatsapp_gateway.bat     # Starts Docker Desktop + the WhatsApp gateway container
 │   ├── pre_commit_privacy_check.mjs   # Blocks commits containing your real phone/email
 │   └── install_git_hooks.bat          # Installs the privacy check as .git/hooks/pre-commit
+├── mobile-app/                        # Standalone Android app (Capacitor): browser scraper port + fake API, see its README
+├── assets/                            # Mascot, dashboard preview, app_icon.svg (Android launcher logo)
+├── Dockerfile, docker-compose.yml     # Run the dashboard server in Docker
 ├── job_scraper/                       # Scraper state and logs (mostly gitignored - personal data)
 │   ├── offline_jobs_log.csv           # Every new listing the offline scraper has found (gitignored)
 │   ├── scraper_config.json            # Search keywords/locations/page limits - edited via the dashboard's Search settings panel

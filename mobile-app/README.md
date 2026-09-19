@@ -11,3 +11,5 @@ node build_www.mjs && npx cap sync android
 cd android && gradlew.bat assembleDebug     # needs JDK 17 + Android SDK (Capacitor is pinned to v6 for Java 17)
 ```
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+Launcher icon: `android/app/src/main/res/drawable/ic_logo_fg.xml` (adaptive, indigo background) plus generated legacy PNGs in `mipmap-*`; source artwork at `../assets/app_icon.svg`.
