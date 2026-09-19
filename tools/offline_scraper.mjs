@@ -27,6 +27,52 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { DEFAULT_CONFIG } from './scraper_config_defaults.mjs';
 
+// ---------------------------------------------------------------------------
+// Console output - friendly and consistent. Colors only when attached to a real
+// terminal (not when the dashboard pipes this into its log box) and NO_COLOR unset.
+// ---------------------------------------------------------------------------
+const USE_COLOR = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+const paint = (code, s) => (USE_COLOR ? `\x1b[${code}m${s}\x1b[0m` : s);
+const RUN_STARTED_AT = Date.now();
+let uiPortal = '';
+const ERROR_HINTS = [
+  [/HTTP (403|429)|Cloudflare|diblokir/i, 'kemungkinan diblokir sementara - dilewati, coba lagi nanti'],
+  [/HTTP 5\d\d/i, 'server portalnya lagi bermasalah - coba lagi nanti'],
+  [/fetch failed|ENOTFOUND|ECONN|ETIMEDOUT|timed out|network/i, 'cek koneksi internet'],
+  [/tidak ketemu|tidak bisa dibaca|layout/i, 'tampilan situs mungkin berubah'],
+];
+function hintFor(msg) {
+  const h = ERROR_HINTS.find(([re]) => re.test(msg));
+  return h ? paint(2, ` (${h[1]})`) : '';
+}
+const ui = {
+  banner(lines) {
+    const bar = '='.repeat(56);
+    console.log(paint(36, bar));
+    lines.forEach((l, i) => console.log(i === 0 ? paint(1, ' ' + l) : ' ' + l));
+    console.log(paint(36, bar));
+  },
+  head(text) { console.log('\n' + paint(1, text)); },
+  query(portal, group, keyword) {
+    if (portal !== uiPortal) { uiPortal = portal; console.log('\n' + paint(1, `▶ ${portal}`)); }
+    console.log(`  • ${keyword}` + (group ? paint(2, `  [${group}]`) : ''));
+  },
+  result(total, fresh) {
+    console.log(total === 0
+      ? paint(2, '      belum ada hasil')
+      : `      → ${total} hasil` + (fresh ? paint(32, `, ${fresh} baru`) : paint(2, ', belum ada yang baru')));
+  },
+  ok(msg) { console.log(paint(32, '  ✔ ') + msg); },
+  note(msg) { console.log(paint(36, '  ℹ ') + msg); },
+  warn(msg) { console.error(paint(33, '  ⚠ ') + msg + hintFor(msg)); },
+  fail(msg) { console.error(paint(31, '  ✖ ') + msg + hintFor(msg)); },
+  duration() {
+    const s = Math.round((Date.now() - RUN_STARTED_AT) / 1000);
+    return s < 60 ? `${s} detik` : `${Math.floor(s / 60)} menit ${s % 60} detik`;
+  },
+};
+
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const SEEN_PATH = path.join(ROOT, 'job_scraper', 'offline_seen.json');
@@ -56,7 +102,7 @@ function loadConfig() {
     }
     return merged;
   } catch {
-    console.error(`  [warn] job_scraper/scraper_config.json gagal dibaca, pakai default bawaan.`);
+    ui.warn(`job_scraper/scraper_config.json gagal dibaca, pakai default bawaan.`);
     return DEFAULT_CONFIG;
   }
 }
@@ -73,7 +119,7 @@ const ACTIVE_GROUPS = RUN_GROUP
   ? KEYWORD_GROUPS.filter((g) => g.name === RUN_GROUP)
   : KEYWORD_GROUPS.filter((g) => g.enabled !== false);
 if (RUN_GROUP && !ACTIVE_GROUPS.length) {
-  console.error(`  [warn] Grup keyword "${RUN_GROUP}" tidak ketemu di scraper_config.json - gak ada yang dicari.`);
+  ui.warn(`Grup keyword "${RUN_GROUP}" tidak ketemu di scraper_config.json - gak ada yang dicari.`);
 }
 // Flattened {keyword, group} pairs - every search loop below iterates this
 // once instead of re-implementing the group nesting four times over.
@@ -122,9 +168,9 @@ function runCli(cliPath, args, label) {
   } catch (err) {
     const stderr = String(err.stderr || err.message || err);
     if (/429/.test(stderr)) {
-      console.error(`  [rate-limited] ${label}: portal lagi throttle, coba lagi nanti (jangan diulang buru-buru)`);
+      ui.warn(`Dibatasi portal - ${label}: portal lagi throttle, coba lagi nanti (jangan diulang buru-buru)`);
     } else {
-      console.error(`  [error] ${label}: ${stderr.split('\n')[0]}`);
+      ui.fail(`${label}: ${stderr.split('\n')[0]}`);
     }
     return { results: [] };
   }
@@ -142,9 +188,9 @@ function runCliDetail(cliPath, id, label) {
   } catch (err) {
     const stderr = String(err.stderr || err.message || err);
     if (/429/.test(stderr)) {
-      console.error(`  [rate-limited] detail ${label}: portal lagi throttle, skip detail buat ini.`);
+      ui.warn(`Dibatasi portal - detail ${label}: portal lagi throttle, skip detail buat ini.`);
     } else {
-      console.error(`  [error] detail ${label}: ${stderr.split('\n')[0]}`);
+      ui.fail(`detail ${label}: ${stderr.split('\n')[0]}`);
     }
     return null;
   }
@@ -273,27 +319,27 @@ async function fetchJobStreetPage(query, page) {
     if (!res.ok) {
       const challenged = res.headers.get('cf-mitigated') === 'challenge' || /Just a moment/i.test(html);
       if (challenged) {
-        console.error(`  [blocked] jobstreet "${query}" p${page}: Cloudflare ngeluarin JS challenge - gak bisa diselesain script biasa.`);
+        ui.warn(`Diblokir - jobstreet "${query}" p${page}: Cloudflare minta verifikasi browser, tidak bisa dilewati skrip.`);
         return { jobs: [], blocked: true };
       }
-      console.error(`  [error] jobstreet "${query}" p${page}: HTTP ${res.status}`);
+      ui.fail(`jobstreet "${query}" p${page}: HTTP ${res.status}`);
       return { jobs: [], blocked: false };
     }
   } catch (err) {
-    console.error(`  [error] jobstreet "${query}" p${page}: ${String(err.message || err).split('\n')[0]}`);
+    ui.fail(`jobstreet "${query}" p${page}: ${String(err.message || err).split('\n')[0]}`);
     return { jobs: [], blocked: false };
   }
 
   const raw = extractJsonAfterMarker(html, 'window.SEEK_APOLLO_DATA');
   if (!raw) {
-    console.error(`  [error] jobstreet "${query}" p${page}: embedded data not found (site layout may have changed)`);
+    ui.fail(`jobstreet "${query}" p${page}: data tidak ketemu (tampilan situs mungkin berubah)`);
     return { jobs: [], blocked: false };
   }
   let data;
   try {
     data = JSON.parse(raw);
   } catch {
-    console.error(`  [error] jobstreet "${query}" p${page}: embedded data did not parse as JSON`);
+    ui.fail(`jobstreet "${query}" p${page}: data tidak bisa dibaca`);
     return { jobs: [], blocked: false };
   }
 
@@ -400,7 +446,7 @@ async function fetchMagentaJobs() {
       await sleep(300);
     }
   } catch (err) {
-    console.error('  [error] magenta: ' + String(err.message || err).split('\n')[0]);
+    ui.fail('magenta: ' + String(err.message || err).split('\n')[0]);
   }
   return jobs;
 }
@@ -455,9 +501,9 @@ async function fetchMagangHubPage(query, page) {
   const url = `https://maganghub.kemnaker.go.id/magang-nasional/lowongan?keyword=${encodeURIComponent(query)}&page=${page}`;
   try {
     const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'id-ID,id;q=0.9' } });
-    if (!res.ok) { console.error(`  [error] maganghub "${query}": HTTP ${res.status}`); return []; }
+    if (!res.ok) { ui.fail(`maganghub "${query}": HTTP ${res.status}`); return []; }
     const data = extractMagangHubVacancies(await res.text());
-    if (!data || !Array.isArray(data.data)) { console.error(`  [error] maganghub "${query}": data tidak ketemu (layout situs berubah?)`); return []; }
+    if (!data || !Array.isArray(data.data)) { ui.fail(`maganghub "${query}": data tidak ketemu (layout situs berubah?)`); return []; }
     return data.data.filter((v) => v.id).map((v) => {
       const levels = (v.educationLevels || []).map((l) => MAGANGHUB_LEVEL[l] || l).join(', ');
       const prodi = (v.studyPrograms || []).map((p) => p.name).join(', ');
@@ -474,7 +520,7 @@ async function fetchMagangHubPage(query, page) {
       };
     });
   } catch (err) {
-    console.error(`  [error] maganghub "${query}": ${String(err.message || err).split('\n')[0]}`);
+    ui.fail(`maganghub "${query}": ${String(err.message || err).split('\n')[0]}`);
     return [];
   }
 }
@@ -493,24 +539,24 @@ async function fetchGlintsPage(query) {
     });
     html = await res.text();
     if (!res.ok) {
-      console.error(`  [error] glints "${query}": HTTP ${res.status}`);
+      ui.fail(`glints "${query}": HTTP ${res.status}`);
       return [];
     }
   } catch (err) {
-    console.error(`  [error] glints "${query}": ${String(err.message || err).split('\n')[0]}`);
+    ui.fail(`glints "${query}": ${String(err.message || err).split('\n')[0]}`);
     return [];
   }
 
   const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
   if (!m) {
-    console.error(`  [error] glints "${query}": embedded data not found (site layout may have changed)`);
+    ui.fail(`glints "${query}": data tidak ketemu (tampilan situs mungkin berubah)`);
     return [];
   }
   let data;
   try {
     data = JSON.parse(m[1]);
   } catch {
-    console.error(`  [error] glints "${query}": embedded data did not parse as JSON`);
+    ui.fail(`glints "${query}": data tidak bisa dibaca`);
     return [];
   }
   const jobs = data?.props?.pageProps?.initialJobs?.jobsInPage || [];
@@ -620,7 +666,7 @@ async function fetchLinkedinFeedSearch(query, cookie) {
     });
     html = await res.text();
   } catch (err) {
-    console.error(`  [error] linkedin-feed "${query}": ${String(err.message || err).split('\n')[0]}`);
+    ui.fail(`linkedin-feed "${query}": ${String(err.message || err).split('\n')[0]}`);
     return { urls: [], blocked: false };
   }
   if (isLinkedinLoginWall(html)) return { urls: [], blocked: true };
@@ -953,7 +999,7 @@ function ensureLogHeader() {
   if (firstLine !== CSV_HEADER) {
     const backupPath = LOG_PATH.replace(/\.csv$/, '.legacy.csv');
     writeFileSync(backupPath, readFileSync(LOG_PATH));
-    console.log(`  [info] Format kolom CSV berubah - data lama dipindah ke ${path.basename(backupPath)}, mulai file baru.`);
+    ui.note(`Format kolom CSV berubah - data lama dipindah ke ${path.basename(backupPath)}, mulai file baru.`);
     writeFileSync(LOG_PATH, CSV_HEADER, 'utf-8');
   }
 }
@@ -995,11 +1041,7 @@ function beepIfNew(count) {
 // Live progress feedback so the process is visible while it runs, not just a
 // silent pause followed by a final total at the end.
 function logQueryProgress(total, newCount) {
-  if (total === 0) {
-    console.log('    -> 0 hasil');
-  } else {
-    console.log(`    -> ${total} hasil (${newCount} kemungkinan baru)`);
-  }
+  ui.result(total, newCount);
 }
 
 // ---------------------------------------------------------------------------
@@ -1065,7 +1107,7 @@ function logWhatsAppAttempt({ status, target, jobCount, httpStatus, error, messa
 
 async function sendToOneTarget(target, text, jobCount) {
   if (WA_DRY_RUN) {
-    console.log(`  [whatsapp] DRY-RUN - akan kirim ke ${target} tapi TIDAK beneran dikirim (WA_DRY_RUN=true di .env).`);
+    ui.note(`WhatsApp: DRY-RUN - akan kirim ke ${target} tapi TIDAK beneran dikirim (WA_DRY_RUN=true di .env).`);
     logWhatsAppAttempt({ status: 'dry_run', target, jobCount, httpStatus: '', error: '', message: text });
     return true;
   }
@@ -1078,16 +1120,16 @@ async function sendToOneTarget(target, text, jobCount) {
       body: JSON.stringify({ phone: target, message: text }),
     });
     if (!res.ok) {
-      console.error(`  [whatsapp] gagal kirim ke ${target} (HTTP ${res.status}) - cek server WA-nya nyala apa enggak. (dicatat di job_scraper/whatsapp_log.csv)`);
+      ui.warn(`WhatsApp: gagal kirim ke ${target} (HTTP ${res.status}) - cek server WA-nya nyala apa enggak. (dicatat di job_scraper/whatsapp_log.csv)`);
       logWhatsAppAttempt({ status: 'failed', target, jobCount, httpStatus: res.status, error: `HTTP ${res.status}`, message: text });
       return false;
     }
-    console.log(`  [whatsapp] notifikasi terkirim ke ${target} (dicatat di job_scraper/whatsapp_log.csv).`);
+    ui.note(`WhatsApp: notifikasi terkirim ke ${target} (dicatat di job_scraper/whatsapp_log.csv).`);
     logWhatsAppAttempt({ status: 'sent', target, jobCount, httpStatus: res.status, error: '', message: text });
     return true;
   } catch (err) {
     const errMsg = String(err.message || err).split('\n')[0];
-    console.error(`  [whatsapp] gagal kirim ke ${target}: ${errMsg} - server WA-nya (${WA_BASE_URL}) kemungkinan belum nyala. (dicatat di job_scraper/whatsapp_log.csv)`);
+    ui.warn(`WhatsApp: gagal kirim ke ${target}: ${errMsg} - server WA-nya (${WA_BASE_URL}) kemungkinan belum nyala. (dicatat di job_scraper/whatsapp_log.csv)`);
     logWhatsAppAttempt({ status: 'failed', target, jobCount, httpStatus: '', error: errMsg, message: text });
     return false;
   }
@@ -1140,7 +1182,7 @@ function buildKeywordMessage(keyword, jobs) {
 async function notifyWhatsApp(jobs) {
   if (!WA_ENABLED || jobs.length === 0) return;
   const groups = groupByKeyword(jobs);
-  console.log(`  [whatsapp] ngirim ${groups.size} pesan (1 per kata kunci, isinya lengkap semua)...`);
+  ui.note(`WhatsApp: ngirim ${groups.size} pesan (1 per kata kunci, isinya lengkap semua)...`);
   for (const [keyword, groupJobs] of groups) {
     const message = buildKeywordMessage(keyword, groupJobs);
     await sendWhatsAppMessage(message, groupJobs.length);
@@ -1153,7 +1195,13 @@ async function notifyWhatsApp(jobs) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  console.log(`[${new Date().toISOString()}] Offline job scraper starting...`);
+  ui.banner([
+    'JobSearch - pencarian lowongan dimulai',
+    new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) +
+      ` - ${KEYWORD_ENTRIES.length} keyword` + (RUN_GROUP ? ` - grup "${RUN_GROUP}"` : ''),
+    'Portal: LinkedIn, JobStreet, Glints' + (CONFIG.maganghubEnabled !== false ? ', MagangHub' : '') + (CONFIG.magentaEnabled !== false ? ', MAGENTA' : ''),
+  ]);
+  if (!KEYWORD_ENTRIES.length) ui.warn('Belum ada keyword aktif. Tambahkan lewat Pengaturan di dashboard atau job_scraper/scraper_config.json.');
   const seen = loadSeen();
   const trackerLines = loadTrackerLines();
   ensureLogHeader();
@@ -1161,7 +1209,7 @@ async function main() {
   const collected = [];
 
   for (const { keyword: q, group } of KEYWORD_ENTRIES) {
-    console.log(`  LinkedIn [${group}]: "${q}"`);
+    ui.query('LinkedIn', group, q);
     for (let page = 1; page <= LINKEDIN_MAX_PAGES; page++) {
       const data = runCli(LINKEDIN_CLI, ['-q', q, '-l', 'Indonesia', '--jobage', '14', '--limit', '20', '--page', String(page)], `linkedin "${q}" p${page}`);
       const before = collected.length;
@@ -1179,7 +1227,7 @@ async function main() {
   let jobstreetGaveUp = false;
   for (const { keyword: q, group } of KEYWORD_ENTRIES) {
     if (jobstreetGaveUp) break;
-    console.log(`  JobStreet [${group}]: "${q}"`);
+    ui.query('JobStreet', group, q);
     for (let page = 1; page <= JOBSTREET_MAX_PAGES; page++) {
       const { jobs, blocked } = await fetchJobStreetPage(q, page);
       jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
@@ -1191,7 +1239,7 @@ async function main() {
       if (blocked) {
         consecutiveBlocks++;
         if (consecutiveBlocks >= 2) {
-          console.error('  [jobstreet] Kena Cloudflare challenge 2x berturut-turut - berhenti nyoba JobStreet buat run ini. LinkedIn tetap lanjut. Coba lagi beberapa jam lagi.');
+          ui.warn('JobStreet: Kena Cloudflare challenge 2x berturut-turut - berhenti nyoba JobStreet buat run ini. LinkedIn tetap lanjut. Coba lagi beberapa jam lagi.');
           jobstreetGaveUp = true;
           break;
         }
@@ -1203,7 +1251,7 @@ async function main() {
   }
 
   for (const { keyword: q, group } of KEYWORD_ENTRIES) {
-    console.log(`  Glints [${group}]: "${q}"`);
+    ui.query('Glints', group, q);
     const jobs = await fetchGlintsPage(q);
     jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
     collected.push(...jobs);
@@ -1214,7 +1262,7 @@ async function main() {
 
   if (CONFIG.maganghubEnabled !== false) {
     for (const { keyword: q, group } of KEYWORD_ENTRIES) {
-      console.log(`  MagangHub [${group}]: "${q}"`);
+      ui.query('MagangHub', group, q);
       const jobs = [];
       for (let p = 1; p <= Math.min(CONFIG.maganghubMaxPages || 1, 3); p++) {
         const got = await fetchMagangHubPage(q, p);
@@ -1231,7 +1279,7 @@ async function main() {
 
   if (CONFIG.magentaEnabled !== false && KEYWORD_ENTRIES.length) {
     const mg = KEYWORD_ENTRIES[0].group;
-    console.log(`  MAGENTA [${mg}]: semua lowongan BUMN`);
+    ui.query('MAGENTA (BUMN)', mg, 'semua lowongan');
     const jobs = await fetchMagentaJobs();
     jobs.forEach((j) => { j.keyword = 'MAGENTA'; j.keyword_group = mg; });
     collected.push(...jobs);
@@ -1240,17 +1288,17 @@ async function main() {
 
   const feedCookie = process.env.LINKEDIN_LI_AT_COOKIE;
   if (feedCookie) {
-    console.log('\nLinkedIn feed-post search aktif (pakai sesi login kamu sendiri - hati-hati, ini di luar ToS LinkedIn)...');
+    ui.note('LinkedIn feed aktif (memakai sesi login kamu sendiri - di luar ToS LinkedIn, risiko ada di kamu).');
     let feedSearchCount = 0;
     let feedDetailCount = 0;
     let feedBlocked = false;
     for (const { keyword: q, group } of KEYWORD_ENTRIES) {
       if (feedBlocked || feedSearchCount >= FEED_MAX_SEARCHES_PER_RUN || feedDetailCount >= FEED_MAX_DETAIL_PER_RUN) break;
       feedSearchCount++;
-      console.log(`  LinkedIn feed [${group}]: "${q}"`);
+      ui.query('LinkedIn feed', group, q);
       const { urls, blocked } = await fetchLinkedinFeedSearch(q, feedCookie);
       if (blocked) {
-        console.error('  [linkedin-feed] Kena halaman login/checkpoint - berhenti total buat run ini. Cek akun LinkedIn kamu, cookie mungkin udah gak valid/expired.');
+        ui.warn('LinkedIn feed: Kena halaman login/checkpoint - berhenti total buat run ini. Cek akun LinkedIn kamu, cookie mungkin udah gak valid/expired.');
         feedBlocked = true;
         break;
       }
@@ -1261,7 +1309,7 @@ async function main() {
         if (seen[url]) continue; // don't spend a detail-fetch (and more account risk) on something already logged
         const { text, blocked: detailBlocked } = await fetchLinkedinPostDetail(url, feedCookie);
         if (detailBlocked) {
-          console.error('  [linkedin-feed] Kena halaman login/checkpoint - berhenti total buat run ini.');
+          ui.warn('LinkedIn feed: Kena halaman login/checkpoint - berhenti total buat run ini.');
           feedBlocked = true;
           break;
         }
@@ -1299,9 +1347,9 @@ async function main() {
   // for no benefit (their description/requirements never change after the
   // fact anyway).
   if (dedupedThisRun.length) {
-    console.log(`\nMembuka detail ${dedupedThisRun.length} lowongan baru (buat persyaratan + status mahasiswa/lulusan)...`);
+    ui.head(`Membaca detail ${dedupedThisRun.length} lowongan baru (syarat, deadline, kelayakan)...`);
   }
-  for (const job of dedupedThisRun) {
+  for (const [jobIdx, job] of dedupedThisRun.entries()) {
     if (!job.source_type) job.source_type = 'job_listing';
     let fullText = job.description || '';
     if (job.source_type === 'feed_post') {
@@ -1335,11 +1383,10 @@ async function main() {
     job.fit_score = computeFitScore(`${job.title} ${fullText}`);
     job.apply_method = detectApplyMethod(fullText, job.portal);
     const elig = job.eligibility === 'student_ok' ? 'mahasiswa OK'
-      : job.eligibility === 'graduate_required' ? 'perlu lulus'
-      : job.eligibility === 'unclear' ? 'campuran' : '-';
-    const fitTxt = job.fit_score == null ? '' : `, fit ${job.fit_score}`;
-    const deadlineTxt = job.deadline ? `, deadline ${job.deadline}` : '';
-    console.log(`  [detail] ${job.portal}: ${job.title} - ${job.company} (${elig}${fitTxt}${deadlineTxt}) [${job.apply_method}]`);
+      : job.eligibility === 'graduate_required' ? 'perlu lulusan'
+      : job.eligibility === 'unclear' ? 'sinyal campuran' : '';
+    const bits = [elig, job.fit_score == null ? '' : `cocok ${job.fit_score}`, job.deadline ? `deadline ${job.deadline}` : ''].filter(Boolean);
+    console.log(paint(2, `  [${jobIdx + 1}/${dedupedThisRun.length}] `) + `${job.title} - ${job.company}` + (bits.length ? paint(2, `  (${bits.join(' - ')})`) : ''));
   }
 
   const consolidated = consolidateMassPostings(dedupedThisRun);
@@ -1352,25 +1399,37 @@ async function main() {
   }
   saveSeen(seen);
 
-  console.log(`\n[${new Date().toISOString()}] Done. ${consolidated.length} new listing(s) appended to ${LOG_PATH}`);
+  const perPortal = {};
+  consolidated.forEach((j) => { perPortal[j.portal] = (perPortal[j.portal] || 0) + 1; });
+  console.log('');
+  ui.banner([
+    `Selesai dalam ${ui.duration()}`,
+    consolidated.length ? `${consolidated.length} lowongan baru disimpan ke ${path.relative(ROOT, LOG_PATH).replace(/\\/g, '/')}` : 'Belum ada lowongan baru kali ini.',
+    ...(consolidated.length ? [Object.entries(perPortal).map(([p, n]) => `${p} ${n}`).join(' - ')] : []),
+  ]);
   if (trackerLines.length) {
-    console.log(`  (${trackerLines.length} baris di job_search_tracker.csv dipakai buat nyaring yang udah pernah dilamar)`);
+    ui.note(`${trackerLines.length} lamaran di job_search_tracker.csv dipakai untuk menyaring yang sudah pernah kamu lamar.`);
   }
   if (consolidated.length > 0) {
-    console.log('\nLowongan baru yang ketemu:');
-    const SHOW_MAX = 30;
-    consolidated.slice(0, SHOW_MAX).forEach((job, i) => {
-      console.log(`  ${i + 1}. [${job.portal}] ${job.title} - ${job.company} (${job.location})`);
+    ui.head('Lowongan baru (yang paling cocok di atas):');
+    const SHOW_MAX = 15;
+    const ranked = [...consolidated].sort((x, y) => (Number(y.fit_score) || 0) - (Number(x.fit_score) || 0));
+    ranked.slice(0, SHOW_MAX).forEach((job, i) => {
+      console.log(`  ${String(i + 1).padStart(2)}. ${job.title} - ${job.company}` + paint(2, `  (${job.location || '-'}, ${job.portal}${job.fit_score ? ', cocok ' + job.fit_score : ''})`));
     });
     if (consolidated.length > SHOW_MAX) {
-      console.log(`  ... + ${consolidated.length - SHOW_MAX} lainnya, lihat job_scraper/offline_jobs_log.csv buat daftar lengkap`);
+      console.log(paint(2, `  ... dan ${consolidated.length - SHOW_MAX} lainnya. Daftar lengkap ada di job_scraper/offline_jobs_log.csv atau dashboard.`));
     }
+  } else {
+    ui.note('Tips: tambah keyword, atau jalankan lagi nanti - lowongan baru muncul terus.');
   }
   await notifyWhatsApp(consolidated);
   beepIfNew(consolidated.length);
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  ui.fail('Terjadi error tak terduga: ' + String((err && err.message) || err));
+  if (process.env.DEBUG) console.error(err);
+  else ui.note('Jalankan ulang dengan DEBUG=1 untuk melihat detail teknis, lalu kirim log-nya kalau butuh bantuan.');
   process.exit(1);
 });

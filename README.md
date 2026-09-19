@@ -36,7 +36,9 @@
 - **Jadwal otomatis:** jalan sendiri di jam yang kamu atur (`08:00`, `19:00`, ...).
 - **Notifikasi:** pengingat harian dan pemberitahuan lowongan baru di HP; WhatsApp di PC.
 - **Pelacak lamaran:** status, statistik, import/export CSV.
-- **Ramah pengguna baru:** kartu sambutan, input keyword berupa tag, mode gelap/terang.
+- **Ramah pengguna baru:** aplikasi mulai kosong dengan tutorial interaktif 5 langkah (bergerak sendiri saat kamu selesai mengerjakan tiap langkah), input keyword berupa tag, mode gelap/terang. Buka lagi dari menu ⋯ → Panduan penggunaan.
+- **Cepat:** semua portal dicari bersamaan dan detail dibaca paralel, jadi pencarian di HP jauh lebih singkat.
+- **Output CLI yang jelas:** banner, progres per portal, `[3/34]` saat membaca detail, ringkasan akhir, dan pesan error berbahasa Indonesia dengan saran.
 
 ## Tiga cara pakai
 

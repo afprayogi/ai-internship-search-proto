@@ -200,7 +200,7 @@ setInterval(() => {
     if (!sc.times.includes(hm) || key === lastScheduleKey) return;
     lastScheduleKey = key;
     const r = startScraperRun('');
-    console.log('[schedule] ' + hm + ' -> ' + (r.started ? 'run started' : 'skipped (already running)'));
+    console.log('[jadwal] ' + hm + ' - ' + (r.started ? 'pencarian otomatis dimulai' : 'dilewati, pencarian sebelumnya masih berjalan'));
   } catch { /* config unreadable this tick - try again next */ }
 }, 20000);
 
@@ -466,7 +466,7 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Job search dashboard: http://127.0.0.1:${server.port}/`);
+console.log(`JobSearch siap: http://127.0.0.1:${server.port}/  (dibuka otomatis di browser)`);
 try {
   const nets = require('node:os').networkInterfaces();
   for (const list of Object.values(nets)) {

@@ -12,7 +12,15 @@
   function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { pushLog('[warn] penyimpanan HP penuh / gagal nyimpen'); } }
   function getConfig() {
     var c = load(K.config, null);
-    if (!c) { c = JSON.parse(JSON.stringify(window.__DEFAULT_CONFIG__ || {})); store(K.config, c); }
+    if (!c || c.__v !== 2) {
+      // First run (or upgrade from the pre-tutorial build): start blank so the guided tutorial can walk the user through it.
+      c = JSON.parse(JSON.stringify(window.__DEFAULT_CONFIG__ || {}));
+      c.keywordGroups = [{ name: 'Pencarian 1', enabled: true, keywords: [] }];
+      c.idealLocations = []; c.acceptableLocations = []; c.profileSkills = [];
+      c.schedule = { enabled: false, times: ['08:00', '19:00'] };
+      c.__v = 2;
+      store(K.config, c);
+    }
     return c;
   }
 

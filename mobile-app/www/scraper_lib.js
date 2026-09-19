@@ -404,71 +404,80 @@
     const cfg = opts.config, log = opts.log || (() => {}), seen = opts.seen || {};
     const groups = (cfg.keywordGroups || []).filter((g) => (opts.group ? g.name === opts.group : g.enabled !== false));
     const entries = groups.flatMap((g) => (g.keywords || []).map((k) => ({ q: k, group: g.name })));
-    if (!entries.length) { log('Gak ada keyword yang dicari (grup kosong / nonaktif).'); return { records: [], seenAdditions: {} }; }
+    if (!entries.length) { log('⚠ Belum ada keyword aktif. Ketuk "Keyword" untuk menambahkan.'); return { records: [], seenAdditions: {} }; }
     const collected = [];
     const newish = (jobs) => jobs.filter((j) => j.url && !seen[j.url]).length;
-
-    for (const { q, group } of entries) {
-      log('LinkedIn [' + group + ']: "' + q + '"');
-      for (let p = 1; p <= (cfg.linkedinMaxPages || 1); p++) {
-        try {
-          const cards = (await linkedinSearch(q, p, 14)).slice(0, 20);
-          cards.forEach((c) => collected.push({ portal: 'linkedin', keyword_group: group, title: c.title, company: c.company, location: c.location, date: c.date, url: c.url, description: '' }));
-          log('  -> ' + cards.length + ' hasil (' + newish(cards) + ' kemungkinan baru)');
-        } catch (e) { log('  [error] linkedin: ' + (e.message || e)); }
-        await sleep(jitter(400, 400));
-      }
+    const stopped = () => !!(opts.stopSignal && opts.stopSignal());
+    const said = (jobs, err) => log('      → ' + (jobs.length ? jobs.length + ' hasil, ' + newish(jobs) + ' baru' : 'belum ada hasil') + (err ? ' (' + err + ')' : ''));
+    // Small worker pool: phones are slow mostly because of network latency, so overlapping requests is the big win.
+    async function pool(items, n, fn) {
+      let next = 0;
+      await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+        while (next < items.length && !stopped()) { const i = next++; try { await fn(items[i], i); } catch (e) { /* one bad item must not stop the rest */ } }
+      }));
     }
 
-    let blocks = 0, jsGaveUp = false;
-    for (const { q, group } of entries) {
-      if (jsGaveUp) break;
-      log('JobStreet [' + group + ']: "' + q + '"');
-      for (let p = 1; p <= (cfg.jobstreetMaxPages || 1); p++) {
-        const r = await jobstreetSearch(q, p);
+    // Every portal searches at the same time; inside a portal keywords run 2 at a time (JobStreet 1: Cloudflare is touchy).
+    const portalTasks = [];
+    portalTasks.push(async () => {
+      log('▶ LinkedIn');
+      await pool(entries, 2, async ({ q, group }) => {
+        for (let p = 1; p <= (cfg.linkedinMaxPages || 1); p++) {
+          try {
+            const cards = (await linkedinSearch(q, p, 14)).slice(0, 20);
+            cards.forEach((c) => collected.push({ portal: 'linkedin', keyword_group: group, title: c.title, company: c.company, location: c.location, date: c.date, url: c.url, description: '' }));
+            log('  • LinkedIn: ' + q); said(cards);
+          } catch (e) { log('  ✖ LinkedIn "' + q + '": ' + (e.message || e)); }
+        }
+      });
+    });
+    portalTasks.push(async () => {
+      let blocks = 0, gaveUp = false;
+      log('▶ JobStreet');
+      await pool(entries, 1, async ({ q, group }) => {
+        for (let p = 1; p <= (cfg.jobstreetMaxPages || 1) && !gaveUp; p++) {
+          const r = await jobstreetSearch(q, p);
+          r.jobs.forEach((j) => { j.keyword_group = group; });
+          collected.push(...r.jobs);
+          if (r.blocked) { blocks++; log('  ⚠ JobStreet: diblokir Cloudflare' + (blocks >= 2 ? ', dilewati untuk pencarian ini (coba lagi nanti)' : '')); if (blocks >= 2) gaveUp = true; }
+          else { blocks = 0; log('  • JobStreet: ' + q); said(r.jobs, r.error); }
+          await sleep(jitter(150, 150));
+        }
+      });
+    });
+    portalTasks.push(async () => {
+      log('▶ Glints');
+      await pool(entries, 2, async ({ q, group }) => {
+        const r = await glintsSearch(q);
         r.jobs.forEach((j) => { j.keyword_group = group; });
         collected.push(...r.jobs);
-        if (r.blocked) { blocks++; log('  [blocked] JobStreet kena Cloudflare'); if (blocks >= 2) { log('  JobStreet dihentikan buat run ini.'); jsGaveUp = true; break; } }
-        else { blocks = 0; log('  -> ' + r.jobs.length + ' hasil (' + newish(r.jobs) + ' kemungkinan baru)' + (r.error ? ' [' + r.error + ']' : '')); }
-        await sleep(jitter(400, 400));
-      }
-    }
-
-    for (const { q, group } of entries) {
-      log('Glints [' + group + ']: "' + q + '"');
-      const r = await glintsSearch(q);
-      r.jobs.forEach((j) => { j.keyword_group = group; });
-      collected.push(...r.jobs);
-      log('  -> ' + r.jobs.length + ' hasil (' + newish(r.jobs) + ' kemungkinan baru)' + (r.error ? ' [' + r.error + ']' : ''));
-      await sleep(jitter(400, 400));
-    }
-
-    if (cfg.maganghubEnabled !== false) {
-      for (const { q, group } of entries) {
-        log('MagangHub [' + group + ']: "' + q + '"');
+        log('  • Glints: ' + q); said(r.jobs, r.error);
+      });
+    });
+    if (cfg.maganghubEnabled !== false) portalTasks.push(async () => {
+      log('▶ MagangHub');
+      await pool(entries, 2, async ({ q, group }) => {
         const acc = [];
         let err = '';
         for (let p = 1; p <= Math.min(cfg.maganghubMaxPages || 1, 3); p++) {
           const r = await magangHubSearch(q, p);
           acc.push(...r.jobs); if (r.error) err = r.error;
           if (r.jobs.length < 18) break;
-          await sleep(300);
         }
         acc.forEach((j) => { j.keyword_group = group; });
         collected.push(...acc);
-        log('  -> ' + acc.length + ' hasil (' + newish(acc) + ' kemungkinan baru)' + (err ? ' [' + err + ']' : ''));
-        await sleep(jitter(400, 400));
-      }
-    }
-
-    if (cfg.magentaEnabled !== false && entries.length) {
-      var mg = entries[0].group;
-      log('MAGENTA [' + mg + ']: semua lowongan BUMN');
-      var mr = await magentaSearch();
-      mr.jobs.forEach(function (j) { j.keyword_group = mg; });
-      collected.push.apply(collected, mr.jobs);
-      log('  -> ' + mr.jobs.length + ' hasil (' + newish(mr.jobs) + ' kemungkinan baru)' + (mr.error ? ' [' + mr.error + ']' : ''));
-    }
+        log('  • MagangHub: ' + q); said(acc, err);
+      });
+    });
+    if (cfg.magentaEnabled !== false) portalTasks.push(async () => {
+      log('▶ MAGENTA (BUMN)');
+      const mr = await magentaSearch();
+      mr.jobs.forEach((j) => { j.keyword_group = entries[0].group; });
+      collected.push(...mr.jobs);
+      log('  • MAGENTA: semua lowongan'); said(mr.jobs, mr.error);
+    });
+    log('Mencari di ' + portalTasks.length + ' portal sekaligus...');
+    await Promise.all(portalTasks.map((t) => t().catch((e) => log('  ✖ ' + (e.message || e)))));
 
     const fresh = [], seenRun = new Set();
     for (const j of collected) {
@@ -476,22 +485,23 @@
       seenRun.add(j.url); fresh.push(j);
     }
 
-    if (fresh.length) log('Membuka detail ' + fresh.length + ' lowongan baru...');
-    for (const job of fresh) {
-      if (opts.stopSignal && opts.stopSignal()) break;
+    if (fresh.length) log('Membaca detail ' + fresh.length + ' lowongan baru...');
+    let doneCount = 0;
+    await pool(fresh, 6, async (job) => {
       let full = job.description || '';
-      if (job.portal === 'linkedin') { try { full = (await linkedinDetail(job.url)) || full; } catch (e) { /* keep teaser */ } await sleep(jitter(500, 500)); }
-      else if (job.portal === 'jobstreet') { full = (await jobstreetDetail(job.url)) || full; await sleep(jitter(400, 400)); }
-      else if (job.portal === 'glints') { full = (await glintsDetail(job.url)) || full; await sleep(jitter(400, 400)); }
-      else if (job.portal === 'magenta') { full = (await magentaDetail(job)) || full; await sleep(jitter(300, 300)); }
+      if (job.portal === 'linkedin') { try { full = (await linkedinDetail(job.url)) || full; } catch (e) { /* keep teaser */ } }
+      else if (job.portal === 'jobstreet') full = (await jobstreetDetail(job.url)) || full;
+      else if (job.portal === 'glints') full = (await glintsDetail(job.url)) || full;
+      else if (job.portal === 'magenta') full = (await magentaDetail(job)) || full;
       job.description = full;
       job.requirements = extractRequirements(full);
       job.eligibility = classifyEligibility(job.title + ' ' + full);
       const dl = extractDeadline(full); job.deadline = dl.raw; job.deadline_iso = dl.iso;
       job.fit_score = computeFitScore(job.title + ' ' + full, cfg.profileSkills);
       job.apply_method = detectApplyMethod(full, job.portal);
-      log('  [detail] ' + job.portal + ': ' + job.title + ' - ' + job.company);
-    }
+      doneCount++;
+      if (doneCount % 5 === 0 || doneCount === fresh.length) log('  … ' + doneCount + '/' + fresh.length + ' detail selesai');
+    });
 
     const today = new Date().toISOString().slice(0, 10);
     const records = consolidate(fresh).map((j) => ({
@@ -503,7 +513,7 @@
     }));
     const seenAdditions = {};
     fresh.forEach((j) => { seenAdditions[j.url] = { title: j.title, company: j.company, first_seen: today }; });
-    log('Selesai. ' + records.length + ' lowongan baru.');
+    log('✔ Selesai: ' + records.length + ' lowongan baru.');
     return { records, seenAdditions };
   }
 

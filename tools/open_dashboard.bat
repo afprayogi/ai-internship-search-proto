@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM Starts the local dashboard server (adds scraped-postings + "Run scraper now"
 REM on top of the plain offline tracker) and opens it in the default browser.
 REM Uses tools\JobSearchDashboard.exe if it's been built (see build_dashboard_exe.bat -
