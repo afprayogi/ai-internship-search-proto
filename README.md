@@ -18,13 +18,14 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/app-welcome.png" alt="Welcome screen" width="24%">
-  <img src="assets/screenshots/app-list.png" alt="Postings as cards" width="24%">
-  <img src="assets/screenshots/app-settings.png" alt="Settings with tag inputs" width="24%">
+  <img src="assets/screenshots/app-list.png" alt="Daftar lowongan" width="24%">
+  <img src="assets/screenshots/app-detail.png" alt="Detail lowongan" width="24%">
+  <img src="assets/screenshots/app-filter.png" alt="Filter" width="24%">
+  <img src="assets/screenshots/app-scraper.png" alt="Atur keyword" width="24%">
 </p>
 <p align="center">
-  <img src="assets/screenshots/dashboard-desktop.png" alt="Desktop dashboard" width="74%">
-  <br><sub>Screenshots use real public postings from MagangHub. Same UI on phone and desktop.</sub>
+  <img src="assets/screenshots/dashboard-desktop.png" alt="Dashboard desktop dua panel" width="80%">
+  <br><sub>Data contoh: lowongan publik dari MagangHub. UI yang sama di HP dan desktop (daftar + detail).</sub>
 </p>
 
 ## Fitur

@@ -463,7 +463,6 @@
   .bottom-nav { display: none; }
   @media (max-width: 760px) {
     .phone-only-data { display: block; }
-    header .actions #importBtn, header .actions #exportBtn, header .actions #clearBtn { display: none; }
     .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: space-around; align-items: stretch;
       padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--border); box-shadow: 0 -4px 16px rgba(0,0,0,.08); }
     .bottom-nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; min-height: 52px; border: none; box-shadow: none;
@@ -473,27 +472,168 @@
     .bottom-nav .nav-run { flex: 0 0 64px; }
     .bottom-nav .nav-run span { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; margin-top: -18px; border-radius: 50%;
       background: var(--accent); color: #fff; font-size: 16px; box-shadow: 0 4px 12px rgba(79,70,229,.45); }
-    .section-head .actions #runScraperBtn, .section-head .actions #settingsBtn { display: none; }
-    .tab-bar { display: none; }
-    #phoneScraperSel { width: 100%; margin-bottom: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-weight: 600; }
     .welcome { padding: 16px; }
   }
+
+  /* ================= v2 layout: app bar, job feed, detail pane, sheets ================= */
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 18px 20px 40px; }
+  header.appbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; padding: 0; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand h1 { margin: 0; font-size: 20px; line-height: 1.1; letter-spacing: -0.01em; }
+  .brand .meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .appbar-actions { display: flex; align-items: center; gap: 8px; }
+  .menu-wrap { position: relative; }
+  .menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 80; min-width: 230px; padding: 6px; border: 1px solid var(--border); border-radius: 14px;
+    background: var(--card-bg); box-shadow: 0 12px 32px rgba(0,0,0,.25); display: flex; flex-direction: column; gap: 2px; }
+  .menu[hidden] { display: none; }
+  .menu button { width: 100%; text-align: left; justify-content: flex-start; border: none; box-shadow: none; background: transparent; padding: 10px 12px; border-radius: 10px; font-weight: 500; }
+  .menu button:hover { background: var(--accent-light); transform: none; box-shadow: none; }
+  .menu hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; width: 100%; }
+  .standalone .server-banner { display: none; }
+  .server-banner { margin-bottom: 12px; }
+
+  /* nav tabs as scrollable pills */
+  .tab-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 12px; border-bottom: none; margin-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn { flex: none; white-space: nowrap; border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; background: var(--card-bg); color: var(--text-muted); font-weight: 600; font-size: 13px; min-height: 0; box-shadow: none; }
+  .tab-btn.active, .tab-btn[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab-btn::after, .tab-btn::before { display: none !important; }
+
+  /* search + chips */
+  .jobs-top { position: sticky; top: 0; z-index: 30; margin: 0 -20px 10px; padding: 8px 20px 6px; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(10px); }
+  .search-row { display: flex; gap: 8px; align-items: center; }
+  .search-box { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--card-bg); box-shadow: var(--shadow-xs); }
+  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+  .search-box input { flex: 1; min-width: 0; border: none !important; outline: none; background: transparent !important; box-shadow: none !important; padding: 12px 0 !important; font-size: 15px; color: var(--text); }
+  .pill-btn { position: relative; flex: none; border-radius: 999px; padding: 10px 16px; font-weight: 600; font-size: 13px; min-height: 0; }
+  .pill-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .count-badge[hidden] { display: none; }
+  .count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; }
+  .chip-row { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 4px; scrollbar-width: none; }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .brand .logo-badge { width: 38px; height: 38px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 18px; background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+  .sheet select { padding: 11px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font-size: 15px; }
+  .qchip { flex: none; white-space: nowrap; border: 1px solid var(--border); border-radius: 999px; padding: 7px 13px; background: var(--card-bg); color: var(--text); font-size: 13px; font-weight: 600; min-height: 0; box-shadow: none; }
+  .qchip.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent-text); }
+  .result-meta { font-size: 12px; color: var(--text-muted); padding: 4px 2px 0; }
+  .log-details { display: none; margin: 0 0 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); }
+  .log-details.has-log { display: block; }
+  .log-details summary { padding: 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); }
+  .log-details .log-box { margin: 0; border: none; border-top: 1px solid var(--border); border-radius: 0 0 12px 12px; max-height: 200px; }
+
+  /* two-pane on desktop */
+  .jobs-layout { display: grid; grid-template-columns: minmax(360px, 460px) 1fr; gap: 18px; align-items: start; }
+  .jobs-list { min-width: 0; }
+  .job-card { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--card-bg);
+    box-shadow: var(--shadow-xs); cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .12s; }
+  .job-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: var(--shadow-sm); }
+  .job-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+  .job-card.expired-row { opacity: .6; }
+  .avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; color: #fff;
+    background: linear-gradient(135deg, hsl(var(--h) 65% 48%), hsl(calc(var(--h) + 30) 65% 38%)); flex: none; }
+  .job-main { min-width: 0; }
+  .job-title { margin: 0; font-size: 15px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
+  .job-company { font-size: 13px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+  .job-loc { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+  .job-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .tag { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: color-mix(in srgb, var(--text-muted) 14%, transparent); color: var(--text); }
+  .tag-ok { background: color-mix(in srgb, var(--hired, #16a34a) 18%, transparent); color: color-mix(in srgb, var(--hired, #16a34a) 85%, var(--text)); }
+  .tag-warn { background: color-mix(in srgb, #f59e0b 20%, transparent); color: color-mix(in srgb, #b45309 70%, var(--text)); }
+  .tag-bad { background: color-mix(in srgb, var(--closed, #dc2626) 16%, transparent); color: var(--closed, #dc2626); }
+  .job-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 8px; }
+  .job-age { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+  .track-btn { border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; min-height: 0; }
+
+  .job-detail { position: sticky; top: 138px; max-height: calc(100vh - 156px); overflow: auto; border: 1px solid var(--border); border-radius: 18px; background: var(--card-bg); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+  .job-detail .d-bar { display: none; }
+  .d-empty { padding: 60px 20px; text-align: center; color: var(--text-muted); }
+  .d-body { padding: 22px 24px; flex: 1; }
+  .d-head { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
+  .d-head h2 { margin: 0; font-size: 20px; line-height: 1.25; }
+  .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; border-top: 1px solid var(--border); }
+  .d-row { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .d-row span { color: var(--text-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .d-body h4 { margin: 20px 0 8px; font-size: 14px; }
+  .d-text { white-space: pre-wrap; font-size: 13.5px; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
+  .d-foot { position: sticky; bottom: 0; display: flex; gap: 10px; align-items: center; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--card-bg); }
+  .btn-link.primary { display: inline-flex; align-items: center; justify-content: center; padding: 11px 18px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+  .empty-state h3 { margin: 6px 0; color: var(--text); font-size: 17px; }
+  .empty-state p { margin: 0 0 14px; font-size: 14px; }
+  .empty-ico { font-size: 40px; }
+  .empty-state button { margin: 0 4px; }
+  .tracker-add { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+
+  /* sheets (filters, scraper editor) */
+  .sheet-backdrop { position: fixed; inset: 0; z-index: 120; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); padding: 20px; }
+  .sheet-backdrop.open { display: flex; }
+  .sheet { width: 100%; max-width: 520px; max-height: 88vh; display: flex; flex-direction: column; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--border); box-shadow: 0 24px 60px rgba(0,0,0,.4); }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 10px; }
+  .sheet-head h3 { margin: 0; font-size: 17px; }
+  .sheet-body { padding: 4px 18px 20px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+  .f-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-top: 6px; }
+  .sheet select, .sheet input[type="text"], .sheet input[type="number"] { width: 100%; }
+  .f-box { padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-bg-2); display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .f-inline input { width: 72px !important; display: inline-block; margin: 0 4px; }
+  .f-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sheet .group-panel { border: none; background: transparent; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+
+  body.sheet-open, body.detail-open { overflow: hidden; }
+
+  @media (max-width: 899px) {
+    .jobs-layout { display: block; }
+    .job-detail { display: none; }
+    body.detail-open .job-detail { display: flex; position: fixed; inset: 0; z-index: 110; max-height: none; border: none; border-radius: 0; top: 0; padding-top: env(safe-area-inset-top); }
+    body.detail-open .job-detail .d-bar { display: block; position: sticky; top: 0; z-index: 2; padding: 10px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border); }
+    .d-body { padding: 16px; } .d-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+    .d-foot > * { flex: 1; }
+  }
+  @media (max-width: 760px) {
+    .wrap { padding: 12px 12px 24px; }
+    .jobs-top { margin: 0 -12px 8px; padding: 8px 12px 4px; top: env(safe-area-inset-top); }
+    .brand h1 { font-size: 18px; }
+    #runScraperBtn { display: none; }
+    .pill-btn { padding: 10px 12px; }
+    .job-card { grid-template-columns: 40px 1fr; padding: 12px; gap: 10px; }
+    .avatar { width: 40px; height: 40px; font-size: 16px; }
+    .job-side { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--border); }
+    .sheet-backdrop { align-items: flex-end; padding: 0; }
+    .sheet { max-width: none; max-height: 92vh; border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+    .d-grid { grid-template-columns: 1fr; }
+    .bottom-nav .nav-run.busy span { animation: spin 1s linear infinite; }
+    .tab-bar { display: flex !important; }
+    .menu { position: fixed; right: 12px; top: 56px; }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div>
-      <h1><span class="logo-badge">🔍</span> Job Search Dashboard</h1>
-      <div class="meta" id="lastUpdated">No data yet</div>
+  <header class="appbar">
+    <div class="brand">
+      <span class="logo-badge">🔍</span>
+      <div>
+        <h1>JobSearch</h1>
+        <div class="meta" id="lastUpdated">Belum ada data</div>
+      </div>
     </div>
-    <div class="actions">
-      <button class="theme-toggle" id="themeToggleBtn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
-      <button class="primary" id="addBtn">+ Add application</button>
-      <button id="importBtn">Import CSV</button>
-      <input type="file" id="importFile" accept=".csv,text/csv">
-      <button id="exportBtn">Export CSV</button>
-      <button class="danger" id="clearBtn">Clear all</button>
+    <div class="appbar-actions">
+      <button class="primary" id="runScraperBtn">▶ Cari</button>
+      <button class="theme-toggle" id="themeToggleBtn" type="button" aria-label="Ganti tema" title="Ganti tema">🌙</button>
+      <div class="menu-wrap">
+        <button type="button" class="theme-toggle" id="menuBtn" aria-label="Menu" aria-haspopup="true">⋯</button>
+        <div class="menu" id="appMenu" hidden>
+          <button id="addBtn">＋ Tambah lamaran</button>
+          <button id="settingsBtn">⚙️ Pengaturan pencarian</button>
+          <button id="linkedinCookieBtn">🔗 Login LinkedIn feed</button>
+          <hr>
+          <button id="importBtn">Import CSV</button>
+          <input type="file" id="importFile" accept=".csv,text/csv">
+          <button id="exportBtn">Export CSV</button>
+          <button class="danger" id="clearBtn">Hapus semua lamaran</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -504,11 +644,11 @@
     <h2>👋 Selamat datang!</h2>
     <p>Aplikasi ini mencari lowongan magang/kerja dari LinkedIn, JobStreet, dan Glints, lalu membantu kamu melacak lamaran. Mulai dalam 3 langkah:</p>
     <ol class="welcome-steps">
-      <li><b>Isi kata kunci</b> di tab scraper, mis. <i>Electrical Engineer Intern</i> (ketik lalu Enter).</li>
-      <li><b>Tekan ▶ Jalankan</b>. Hasil muncul sebagai kartu, lengkap dengan kecocokan, syarat, dan deadline.</li>
-      <li><b>Tekan + Track</b> pada lowongan yang menarik untuk menyimpannya di <b>Lamaran saya</b>.</li>
+      <li>Ketuk <b>Keyword</b> lalu isi posisi yang kamu cari, mis. <i>Electrical Engineer Intern</i> (ketik + Enter).</li>
+      <li>Tekan <b>▶ Cari</b>. Hasil muncul sebagai kartu; ketuk kartu untuk melihat detail.</li>
+      <li>Ketuk <b>＋ Track</b> pada lowongan yang menarik untuk menyimpannya di <b>Lamaran</b>.</li>
     </ol>
-    <p class="welcome-auto" id="welcomeAuto" hidden>🔔 Di aplikasi ini pencarian bisa berjalan otomatis saat aplikasi dibuka dan kamu dapat notifikasi lowongan baru. Atur di <b>⚙️ Setelan</b>.</p>
+    <p class="welcome-auto" id="welcomeAuto" hidden>🔔 Di aplikasi ini pencarian bisa berjalan otomatis saat aplikasi dibuka dan kamu dapat notifikasi lowongan baru. Atur di <b>Setelan</b>.</p>
     <div class="welcome-actions"><button class="primary" id="welcomeStart" type="button">Mulai</button><button id="welcomeHide" type="button">Jangan tampilkan lagi</button></div>
   </div>
 
@@ -519,64 +659,92 @@
   </div>
 
   <div id="tabPanelScraped" class="tab-panel">
-    <div class="section-card">
-      <div class="section-head">
-        <div>
-          <h2>🕵️ Scraped postings</h2>
-          <div class="sub" id="scrapedSub">via LinkedIn + JobStreet + Glints (tools/offline_scraper.mjs)</div>
-        </div>
-        <div class="actions">
-          <button id="linkedinCookieBtn">🔗 LinkedIn feed login</button>
-          <button id="settingsBtn">⚙️ Search settings</button>
-          <button class="primary" id="runScraperBtn">▶ Run scraper now</button>
-        </div>
+    <div class="jobs-top">
+      <div class="search-row">
+        <label class="search-box"><span aria-hidden="true">🔍</span><input type="text" id="scrapedSearch" placeholder="Cari posisi, perusahaan, atau kota" enterkeyhint="search" autocomplete="off"></label>
+        <button type="button" id="filterBtn" class="pill-btn">Filter<span class="count-badge" id="filterCount" hidden></span></button>
+        <button type="button" id="scraperEditBtn" class="pill-btn">Keyword</button>
       </div>
-      <div class="group-panel" id="groupPanel">
-        <div class="group-card-head">
-          <input type="text" id="gp_name" class="g_name" placeholder="Nama scraper (mis. Magang Elektrik)">
-          <label class="checkbox-label"><input type="checkbox" id="gp_enabled" checked> Ikut Run gabungan</label>
-          <button type="button" class="primary" id="gp_run">▶ Run tab ini</button>
-          <button type="button" class="danger" id="gp_delete">🗑️</button>
-        </div>
-        <textarea class="keyword-list" id="gp_keywords"></textarea>
-        <div class="actions" style="margin-top:8px"><button type="button" id="gp_save">💾 Simpan tab ini</button></div>
+      <div class="chip-row" id="quickChips">
+        <button type="button" class="qchip active" data-q="all">Semua</button>
+        <button type="button" class="qchip" data-q="student">🎓 Cocok mahasiswa</button>
+        <button type="button" class="qchip" data-q="fit">⭐ Paling cocok</button>
+        <button type="button" class="qchip" data-q="deadline">⏰ Deadline dekat</button>
+              </div>
+      <div class="result-meta" id="scrapedSub">0 lowongan</div>
+    </div>
+    <details class="log-details" id="logDetails"><summary>Progress pencarian</summary><div class="log-box" id="logBox"></div></details>
+    <div class="jobs-layout">
+      <div class="jobs-list">
+        <div id="scrapedTableWrap"></div>
+        <div class="pagination" id="scrapedPagination"></div>
       </div>
-      <div class="log-box" id="logBox"></div>
-      <div class="table-toolbar" style="margin-top:14px;">
-        <input type="text" id="scrapedSearch" placeholder="Search title, company, or location...">
-        <select id="scrapedPortalFilter"><option value="">All portals</option></select>
-        <select id="scrapedTierFilter"><option value="">All location tiers</option></select>
-        <select id="scrapedEligibilityFilter">
-          <option value="">All eligibility</option>
-          <option value="student_ok">Open to students</option>
-          <option value="graduate_required">Graduate required</option>
-          <option value="unclear">Mixed signals</option>
-          <option value="none">Not stated</option>
-        </select>
+      <aside class="job-detail" id="jobDetail" aria-live="polite"></aside>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="filterBackdrop">
+    <div class="sheet" role="dialog" aria-label="Filter">
+      <div class="sheet-head"><h3>Filter &amp; urutkan</h3><button type="button" class="pill-btn primary" id="filterClose">Selesai</button></div>
+      <div class="sheet-body">
+        <label class="f-label">Urutkan</label>
         <select id="scrapedSort">
-          <option value="found_date">Sort: Newest first</option>
-          <option value="fit_score">Sort: Best fit first</option>
-          <option value="deadline">Sort: Deadline soonest</option>
-          <option value="distance">Sort: Nearest first</option>
+          <option value="found_date">Terbaru</option>
+          <option value="fit_score">Paling cocok</option>
+          <option value="deadline">Deadline terdekat</option>
+          <option value="distance">Terdekat dari lokasiku</option>
         </select>
-        <label class="checkbox-label"><input type="checkbox" id="hideExpiredCheck" checked> Hide expired</label>
+        <label class="f-label">Portal</label>
+        <select id="scrapedPortalFilter"><option value="">Semua portal</option></select>
+        <label class="f-label">Jarak / lokasi</label>
+        <select id="scrapedTierFilter"><option value="">Semua lokasi</option></select>
+        <label class="f-label">Kelayakan</label>
+        <select id="scrapedEligibilityFilter">
+          <option value="">Semua</option>
+          <option value="student_ok">Terbuka untuk mahasiswa</option>
+          <option value="graduate_required">Wajib lulusan</option>
+          <option value="unclear">Sinyal campuran</option>
+          <option value="none">Tidak disebutkan</option>
+        </select>
+        <label class="switch-row"><span>Sembunyikan yang kedaluwarsa</span><input type="checkbox" id="hideExpiredCheck" checked></label>
+        <div class="f-box">
+          <div id="myLocationStatus">Jarak: belum diatur.</div>
+          <div class="f-actions">
+            <button type="button" id="useMyLocationBtn">📍 Pakai lokasiku</button>
+            <button type="button" id="clearMyLocationBtn" style="display:none;">Hapus</button>
+          </div>
+          <p class="settings-help">Hanya dipakai di perangkat ini untuk menghitung jarak. Tidak dikirim ke mana pun.</p>
+        </div>
+        <div class="f-box">
+          <div class="f-inline">Lowongan lebih tua dari <input type="number" id="maxAgeDays" min="1" max="365" value="30"> hari dianggap kedaluwarsa.</div>
+          <p class="settings-help" id="expiryHint"></p>
+          <div class="f-actions">
+            <button class="danger" id="cleanupBtn">Hapus yang kedaluwarsa</button>
+            <button class="danger" id="clearScrapedBtn">Kosongkan semua</button>
+          </div>
+        </div>
       </div>
-      <div class="expiry-bar">
-        <span id="myLocationStatus">Distance: not set.</span>
-        <button type="button" id="useMyLocationBtn">📍 Use my location</button>
-        <button type="button" id="clearMyLocationBtn" style="display:none;">Clear</button>
-        <span class="settings-help">Only used in this browser to compute distance - never sent anywhere, not even to the local server.</span>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="scraperBackdrop">
+    <div class="sheet" role="dialog" aria-label="Atur scraper">
+      <div class="sheet-head"><h3>Atur scraper</h3><button type="button" class="pill-btn" id="scraperClose">Tutup</button></div>
+      <div class="sheet-body">
+        <div class="group-panel" id="groupPanel">
+          <div class="group-card-head">
+            <input type="text" id="gp_name" class="g_name" placeholder="Nama scraper (mis. Magang Elektrik)">
+            <label class="switch-row"><span>Ikut pencarian gabungan</span><input type="checkbox" id="gp_enabled" checked></label>
+          </div>
+          <label class="f-label">Keyword</label>
+          <textarea class="keyword-list" id="gp_keywords"></textarea>
+          <div class="f-actions">
+            <button type="button" class="primary" id="gp_run">▶ Cari dengan tab ini</button>
+            <button type="button" id="gp_save">Simpan</button>
+            <button type="button" class="danger" id="gp_delete">Hapus tab</button>
+          </div>
+        </div>
       </div>
-      <div class="expiry-bar">
-        <span>Postings older than</span>
-        <input type="number" id="maxAgeDays" min="1" max="365" value="30">
-        <span>days count as expired.</span>
-        <button class="danger" id="cleanupBtn">🗑️ Delete expired postings now</button>
-        <button class="danger" id="clearScrapedBtn">🗑️ Clear all scraped postings</button>
-        <span class="settings-help" id="expiryHint"></span>
-      </div>
-      <div id="scrapedTableWrap"></div>
-      <div class="pagination" id="scrapedPagination"></div>
     </div>
   </div>
 
@@ -1466,10 +1634,10 @@
     var statusEl = document.getElementById("myLocationStatus");
     var clearBtn = document.getElementById("clearMyLocationBtn");
     if (myLocation) {
-      statusEl.textContent = "Distance: using your shared location (accurate to city level, straight-line only).";
+      statusEl.textContent = "Jarak: memakai lokasimu (akurat tingkat kota, garis lurus).";
       clearBtn.style.display = "";
     } else {
-      statusEl.textContent = "Distance: not set.";
+      statusEl.textContent = "Jarak: belum diatur.";
       clearBtn.style.display = "none";
     }
   }
@@ -1556,9 +1724,9 @@
       expiredCount > 0 ? expiredCount + " posting(s) currently older than " + maxAgeDays + " days" : "";
 
     if (!rows.length) {
-      wrap.innerHTML = '<div class="empty-state">' + (scrapedData.length
-        ? "No postings match these filters."
-        : 'No postings scraped yet. Click "▶ Run scraper now" above.') + '</div>';
+      wrap.innerHTML = scrapedData.length
+        ? '<div class="empty-state"><div class="empty-ico">🔎</div><h3>Tidak ada yang cocok</h3><p>Coba ubah kata pencarian atau filter.</p><button type="button" data-empty="reset">Reset filter</button></div>'
+        : '<div class="empty-state"><div class="empty-ico">🚀</div><h3>Belum ada lowongan</h3><p>Isi keyword, lalu tekan Cari. Hasil dari 5 portal muncul di sini.</p><button type="button" class="primary" data-empty="run">▶ Cari sekarang</button><button type="button" data-empty="scraper">Atur keyword</button></div>';
       document.getElementById("scrapedPagination").innerHTML = "";
       return;
     }
@@ -1602,54 +1770,44 @@
         : escapeHtml(r.deadline);
     }
 
-    var body = pageRows.map(function (r, i) {
-      var salary = r.salary || "—";
+    var PORTAL_NAME = { linkedin: "LinkedIn", jobstreet: "JobStreet", glints: "Glints", magenta: "MAGENTA", maganghub: "MagangHub" };
+    var ELIG_TAG = { student_ok: ["tag-ok", "🎓 Cocok mahasiswa"], graduate_required: ["tag-bad", "🎓 Perlu lulusan"], unclear: ["tag-warn", "🎓 Campuran"] };
+    window.__jobRows = pageRows;
+
+    wrap.innerHTML = pageRows.map(function (r, i) {
       var expired = isExpiredPosting(r, maxAgeDays);
-      var elig = ELIGIBILITY_META[r.eligibility];
-      var eligCell = elig
-        ? '<span class="elig-badge ' + elig.cls + '" title="' + escapeHtml(r.requirements || "") + '">' + elig.label + '</span>'
-        : '<span class="elig-badge elig-none">—</span>';
-      var sourceLabel = SOURCE_TYPE_LABEL[r.source_type] || SOURCE_TYPE_LABEL.job_listing;
+      var et = ELIG_TAG[r.eligibility];
       var dist = distanceToPosting(r);
-      var tierCell = escapeHtml(r.location_tier || "—") +
-        (dist != null ? "<br><span class=\"settings-help\">~" + Math.round(dist) + " km</span>" : "");
-      var appliedEntry = findAppliedEntry(r.company, r.title);
-      var actionCell = appliedEntry
-        ? '<span class="elig-badge elig-student" title="Status: ' + escapeHtml(appliedEntry.status || "") + '">✅ Applied</span>'
-        : '<button data-track="' + i + '">+ Track</button>';
-      return '<tr class="' + (expired ? "expired-row" : "") + '">' +
-        "<td>" + escapeHtml(r.found_date || "—") + (expired ? '<span class="expired-badge">expired</span>' : "") + "</td>" +
-        "<td>" + escapeHtml(r.portal || "—") + "<br><span class=\"settings-help\">" + sourceLabel + "</span></td>" +
-        "<td>" + escapeHtml(r.title || "—") + "</td>" +
-        "<td>" + escapeHtml(r.company || "—") + "</td>" +
-        "<td>" + escapeHtml(r.location || "—") + "</td>" +
-        "<td>" + tierCell + "</td>" +
-        "<td>" + eligCell + "</td>" +
-        "<td>" + fitBadge(r.fit_score) + "</td>" +
-        "<td>" + deadlineCell(r) + "</td>" +
-        "<td>" + escapeHtml(salary) + "</td>" +
-        '<td>' + (r.url ? '<a class="source-link" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Open</a>' : "—") +
-          (applyMethodLabel(r.apply_method) ? '<br><span class="settings-help" title="' + escapeHtml(r.apply_method) + '">' + applyMethodLabel(r.apply_method) + '</span>' : "") +
-        "</td>" +
-        '<td class="row-actions">' + actionCell + "</td>" +
-        "</tr>";
+      var applied = findAppliedEntry(r.company, r.title);
+      var tags = '<span class="tag">' + escapeHtml(PORTAL_NAME[r.portal] || r.portal || "") + "</span>";
+      if (et) tags += '<span class="tag ' + et[0] + '">' + et[1] + "</span>";
+      if (r.fit_score !== "" && r.fit_score != null) tags += '<span class="tag ' + (Number(r.fit_score) >= 50 ? "tag-ok" : "") + '">⭐ ' + Number(r.fit_score) + "</span>";
+      if (r.deadline) tags += '<span class="tag ' + (deadlineClass(r)) + '">⏰ ' + escapeHtml(r.deadline) + "</span>";
+      if (r.salary) tags += '<span class="tag">💰 ' + escapeHtml(r.salary) + "</span>";
+      return '<article class="job-card' + (expired ? " expired-row" : "") + (selectedJobUrl && selectedJobUrl === r.url ? " selected" : "") + '" data-i="' + i + '" tabindex="0">' +
+        avatarHtml(r.company) +
+        '<div class="job-main"><h3 class="job-title">' + escapeHtml(r.title || "—") + "</h3>" +
+        '<div class="job-company">' + escapeHtml(r.company || "—") + "</div>" +
+        '<div class="job-loc">📍 ' + escapeHtml(r.location || "—") + (dist != null ? " · ~" + Math.round(dist) + " km" : "") + "</div>" +
+        '<div class="job-tags">' + tags + "</div></div>" +
+        '<div class="job-side"><span class="job-age">' + escapeHtml(timeAgo(r.posted_date || r.found_date)) + (expired ? " · kedaluwarsa" : "") + "</span>" +
+        (applied ? '<span class="tag tag-ok">✅ Dilamar</span>' : '<button type="button" class="track-btn" data-track="' + i + '" aria-label="Simpan ke lamaran">＋ Track</button>') +
+        "</div></article>";
     }).join("");
 
-    wrap.innerHTML =
-      '<table><thead><tr><th>Found</th><th>Portal</th><th>Title</th><th>Company</th>' +
-      '<th>Location</th><th>Tier</th><th>Eligibility</th><th>Fit</th><th>Deadline</th><th>Salary</th><th>Link</th><th>Actions</th></tr></thead>' +
-      "<tbody>" + body + "</tbody></table>";
-    labelCells(wrap);
-
-    wrap.querySelectorAll("[data-track]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var r = pageRows[parseInt(btn.getAttribute("data-track"), 10)];
-        openModal(null, {
-          company: r.company, role: r.title, source: r.url,
-          channel: "online", notes: "Found via offline scraper (" + r.portal + ")",
-        });
-      });
+    wrap.querySelectorAll(".job-card").forEach(function (card) {
+      var open = function () { var i = parseInt(card.getAttribute("data-i"), 10); showJobDetail(pageRows[i]); };
+      card.addEventListener("click", function (e) { if (!e.target.closest("[data-track]")) open(); });
+      card.addEventListener("keydown", function (e) { if (e.key === "Enter") open(); });
     });
+    wrap.querySelectorAll("[data-track]").forEach(function (btn) {
+      btn.addEventListener("click", function () { startTrack(pageRows[parseInt(btn.getAttribute("data-track"), 10)]); });
+    });
+
+    var sel = pageRows.filter(function (r) { return r.url && r.url === selectedJobUrl; })[0];
+    if (sel) showJobDetail(sel, true);
+    else if (window.matchMedia("(min-width: 900px)").matches) showJobDetail(pageRows[0], true);
+    else closeJobDetail();
   }
 
   function populateScrapedFilterOptions() {
@@ -1657,9 +1815,9 @@
     var tierSel = document.getElementById("scrapedTierFilter");
     var portals = Array.from(new Set(scrapedData.map(function (r) { return r.portal; }).filter(Boolean))).sort();
     var tiers = Array.from(new Set(scrapedData.map(function (r) { return r.location_tier; }).filter(Boolean))).sort();
-    portalSel.innerHTML = '<option value="">All portals</option>' +
+    portalSel.innerHTML = '<option value="">Semua portal</option>' +
       portals.map(function (p) { return '<option value="' + escapeHtml(p) + '">' + escapeHtml(p) + '</option>'; }).join("");
-    tierSel.innerHTML = '<option value="">All location tiers</option>' +
+    tierSel.innerHTML = '<option value="">Semua lokasi</option>' +
       tiers.map(function (t) { return '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>'; }).join("");
   }
 
@@ -2062,6 +2220,152 @@
     showTab(saved === "tracker" ? "tracker" : "scraped");
   })();
 
+  // ---------- job feed UI: cards, detail pane, sheets ----------
+  var selectedJobUrl = "";
+  function deadlineClass(r) {
+    if (!r.deadline_iso) return "";
+    var today = new Date().toISOString().slice(0, 10);
+    if (r.deadline_iso < today) return "tag-bad";
+    return r.deadline_iso <= new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10) ? "tag-warn" : "";
+  }
+  function avatarHtml(name) {
+    var s = String(name || "?").trim(), h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    var letter = (s.replace(/^(PT|CV)\.?\s+/i, "").charAt(0) || "?").toUpperCase();
+    return '<div class="avatar" style="--h:' + h + '" aria-hidden="true">' + escapeHtml(letter) + "</div>";
+  }
+  function timeAgo(dateStr) {
+    var t = Date.parse(dateStr);
+    if (isNaN(t)) return "";
+    var d = Math.floor((Date.now() - t) / 86400000);
+    if (d <= 0) return "Hari ini";
+    if (d === 1) return "Kemarin";
+    if (d < 7) return d + " hari lalu";
+    if (d < 30) return Math.floor(d / 7) + " minggu lalu";
+    return Math.floor(d / 30) + " bulan lalu";
+  }
+  function startTrack(r) {
+    openModal(null, { company: r.company, role: r.title, source: r.url, channel: "online", notes: "Found via scraper (" + r.portal + ")" });
+  }
+  function detailHtml(r) {
+    var PN = { linkedin: "LinkedIn", jobstreet: "JobStreet", glints: "Glints", magenta: "MAGENTA", maganghub: "MagangHub" };
+    var ELIG = { student_ok: "🎓 Terbuka untuk mahasiswa", graduate_required: "🎓 Wajib lulusan", unclear: "🎓 Sinyal campuran" };
+    var dist = distanceToPosting(r), applied = findAppliedEntry(r.company, r.title);
+    function row(k, v) { return v ? '<div class="d-row"><span>' + k + "</span><strong>" + v + "</strong></div>" : ""; }
+    var desc = String(r.description || "").trim();
+    if (desc.length > 3500) desc = desc.slice(0, 3500) + "…";
+    return '<div class="d-bar"><button type="button" class="pill-btn" id="detailBack">‹ Kembali</button></div>' +
+      '<div class="d-body"><div class="d-head">' + avatarHtml(r.company) + "<div><h2>" + escapeHtml(r.title || "—") + "</h2><div class=\"job-company\">" + escapeHtml(r.company || "—") + "</div></div></div>" +
+      '<div class="d-grid">' +
+      row("Lokasi", escapeHtml(r.location || "") + (dist != null ? " (~" + Math.round(dist) + " km)" : "")) +
+      row("Jarak", escapeHtml(r.location_tier || "")) +
+      row("Kelayakan", ELIG[r.eligibility] || "") +
+      row("Kecocokan", r.fit_score !== "" && r.fit_score != null ? Number(r.fit_score) + " / 100" : "") +
+      row("Deadline", escapeHtml(r.deadline || "")) +
+      row("Diposting", escapeHtml(r.posted_date || r.found_date || "")) +
+      row("Gaji", escapeHtml(r.salary || "")) +
+      row("Sumber", escapeHtml(PN[r.portal] || r.portal || "")) +
+      row("Cara melamar", escapeHtml(r.apply_method || "")) +
+      "</div>" +
+      (r.requirements ? '<h4>Syarat</h4><div class="d-text">' + escapeHtml(r.requirements) + "</div>" : "") +
+      (desc ? '<h4>Deskripsi</h4><div class="d-text">' + escapeHtml(desc) + "</div>" : "") +
+      "</div>" +
+      '<div class="d-foot">' +
+      (r.url ? '<a class="btn-link primary" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Buka lowongan ↗</a>' : "") +
+      (applied ? '<span class="tag tag-ok">✅ Sudah dilamar</span>' : '<button type="button" id="detailTrack">＋ Simpan ke lamaran</button>') +
+      "</div>";
+  }
+  function showJobDetail(r, quiet) {
+    var box = document.getElementById("jobDetail");
+    if (!r) { closeJobDetail(); return; }
+    selectedJobUrl = r.url || "";
+    box.innerHTML = detailHtml(r);
+    box.scrollTop = 0;
+    [].forEach.call(document.querySelectorAll(".job-card"), function (c) {
+      var row = (window.__jobRows || [])[parseInt(c.getAttribute("data-i"), 10)];
+      c.classList.toggle("selected", !!row && row.url === selectedJobUrl);
+    });
+    if (!quiet) document.body.classList.add("detail-open");
+    document.getElementById("detailBack").addEventListener("click", closeJobDetail);
+    var tb = document.getElementById("detailTrack");
+    if (tb) tb.addEventListener("click", function () { startTrack(r); });
+  }
+  function closeJobDetail() {
+    document.body.classList.remove("detail-open");
+    var box = document.getElementById("jobDetail");
+    if (!window.matchMedia("(min-width: 900px)").matches) selectedJobUrl = "";
+    if (!box.innerHTML) box.innerHTML = '<div class="d-empty">Pilih lowongan untuk melihat detail.</div>';
+  }
+
+  (function feedWiring() {
+    function sheet(idBackdrop, openBtn, closeBtn) {
+      var bd = document.getElementById(idBackdrop);
+      function close() { bd.classList.remove("open"); document.body.classList.remove("sheet-open"); }
+      document.getElementById(openBtn).addEventListener("click", function () { bd.classList.add("open"); document.body.classList.add("sheet-open"); });
+      document.getElementById(closeBtn).addEventListener("click", close);
+      bd.addEventListener("click", function (e) { if (e.target === bd) close(); });
+      return close;
+    }
+    sheet("filterBackdrop", "filterBtn", "filterClose");
+    var closeScraper = sheet("scraperBackdrop", "scraperEditBtn", "scraperClose");
+    document.getElementById("gp_run").addEventListener("click", closeScraper);
+
+    // app menu
+    var menu = document.getElementById("appMenu"), mb = document.getElementById("menuBtn");
+    mb.addEventListener("click", function (e) { e.stopPropagation(); menu.hidden = !menu.hidden; });
+    document.addEventListener("click", function (e) { if (!menu.hidden && !menu.contains(e.target)) menu.hidden = true; });
+    menu.addEventListener("click", function (e) { if (e.target.closest("button")) menu.hidden = true; });
+
+    // quick chips <-> hidden selects
+    var elig = document.getElementById("scrapedEligibilityFilter"), sort = document.getElementById("scrapedSort");
+    var portal = document.getElementById("scrapedPortalFilter"), tier = document.getElementById("scrapedTierFilter"), hide = document.getElementById("hideExpiredCheck");
+    function fire(el) { el.dispatchEvent(new Event("change", { bubbles: true })); }
+    function syncChips() {
+      var cur = elig.value === "student_ok" ? "student" : sort.value === "fit_score" ? "fit" : sort.value === "deadline" ? "deadline" : (elig.value === "" && sort.value === "found_date") ? "all" : "";
+      [].forEach.call(document.querySelectorAll("#quickChips .qchip"), function (c) {
+        var q = c.getAttribute("data-q");
+        c.classList.toggle("active", q === cur || (q === "new" && cur === "all" && false));
+      });
+      var n = (portal.value ? 1 : 0) + (tier.value ? 1 : 0) + (elig.value && elig.value !== "student_ok" ? 1 : 0) + (hide.checked ? 0 : 1);
+      var badge = document.getElementById("filterCount");
+      badge.hidden = !n; badge.textContent = n;
+    }
+    document.getElementById("quickChips").addEventListener("click", function (e) {
+      var c = e.target.closest(".qchip"); if (!c) return;
+      var q = c.getAttribute("data-q");
+      elig.value = q === "student" ? "student_ok" : "";
+      sort.value = q === "fit" ? "fit_score" : q === "deadline" ? "deadline" : "found_date";
+      fire(elig); fire(sort); syncChips();
+    });
+    [elig, sort, portal, tier, hide].forEach(function (el) { el.addEventListener("change", syncChips); });
+    syncChips();
+
+    // empty-state buttons
+    document.getElementById("scrapedTableWrap").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-empty]"); if (!b) return;
+      var a = b.getAttribute("data-empty");
+      if (a === "run") document.getElementById("runScraperBtn").click();
+      else if (a === "scraper") document.getElementById("scraperEditBtn").click();
+      else if (a === "reset") { elig.value = ""; sort.value = "found_date"; portal.value = ""; tier.value = ""; document.getElementById("scrapedSearch").value = ""; fire(elig); fire(sort); syncChips(); }
+    });
+
+    // running state: open progress log, mark bottom "Cari" button
+    var run = document.getElementById("runScraperBtn"), nav = document.querySelector("#bottomNav .nav-run");
+    new MutationObserver(function () {
+      var busy = run.disabled;
+      if (nav) nav.classList.toggle("busy", busy);
+      if (busy) { var ld = document.getElementById("logDetails"); ld.classList.add("has-log"); ld.open = true; }
+    }).observe(run, { attributes: true, attributeFilter: ["disabled"] });
+
+    // tracker: add button (menu is hidden on phones' main flow)
+    var trackerPanel = document.getElementById("tabPanelTracker");
+    var addRow = document.createElement("div"); addRow.className = "tracker-add";
+    addRow.innerHTML = '<button type="button" class="primary" id="trackerAddBtn">＋ Tambah lamaran</button>';
+    trackerPanel.insertBefore(addRow, trackerPanel.firstChild);
+    document.getElementById("trackerAddBtn").addEventListener("click", function () { document.getElementById("addBtn").click(); });
+    if (window.__STANDALONE__) document.body.classList.add("standalone");
+  })();
+
   // ---------- theme, welcome card, bottom nav ----------
   (function uiExtras() {
     var root = document.documentElement, tb = document.getElementById("themeToggleBtn");
@@ -2105,18 +2409,6 @@
       var p = e.target.getAttribute && e.target.getAttribute("data-proxy");
       if (p) { settingsBackdrop.classList.remove("open"); document.getElementById(p).click(); }
     });
-    // phone: top tab-bar is hidden, so switching scrapers goes through a select
-    var sel = document.createElement("select"); sel.id = "phoneScraperSel"; sel.className = "phone-only-data";
-    sel.setAttribute("aria-label", "Pilih scraper");
-    var gp = document.getElementById("groupPanel"); gp.parentNode.insertBefore(sel, gp);
-    sel.addEventListener("change", function () {
-      if (sel.value === "__add") { document.getElementById("addScraperTabBtn").click(); } else { selectGroup(sel.value); }
-    });
-    var origRender = renderScraperTabs; renderScraperTabs = function () {
-      origRender();
-      sel.innerHTML = groupsList().map(function (g) { return '<option value="' + escapeHtml(g.name) + '"' + (g.name === activeGroupName ? " selected" : "") + ">🕵️ " + escapeHtml(g.name) + (g.enabled === false ? " (off)" : "") + "</option>"; }).join("") + '<option value="__add">＋ Tambah scraper…</option>';
-    };
-    renderScraperTabs();
   })();
 
   // ---------- init ----------
