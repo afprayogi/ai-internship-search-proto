@@ -10,56 +10,70 @@
 // fresh setup starts with.
 
 export const DEFAULT_CONFIG = {
-  keywords: [
-    // Role-based (English)
-    'AI Engineer Intern',
-    'IoT Engineer Intern',
-    'Embedded Systems Intern',
-    'Machine Learning Intern',
-    'Automation Intern',
-    'Electrical Engineering Intern',
-    'Electrical Maintenance',
-    'Electrical Engineering Apprenticeship',
-    'Automation Apprenticeship',
-    'Apprenticeship Electrical',
-    'Instrumentation Intern',
-    'PLC Intern',
-    'Robotics Intern',
-    'Software Engineer Intern',
-    'Fullstack Developer Intern',
+  // Named, independently-runnable groups of keywords - each shows as its own
+  // card in the dashboard's Search settings panel, with its own "Run" button
+  // and an enabled/disabled toggle. `enabled: false` groups are skipped by
+  // the combined "Run scraper now" button but can still be run individually.
+  // A single flat `keywords: [...]` array (the pre-groups format) is still
+  // read and auto-migrated into one "Default" group - see loadConfig() in
+  // offline_scraper.mjs - so older job_scraper/scraper_config.json files
+  // keep working without any manual edits.
+  keywordGroups: [
+    {
+      name: 'Magang',
+      enabled: true,
+      keywords: [
+        // Role-based (English)
+        'AI Engineer Intern',
+        'IoT Engineer Intern',
+        'Embedded Systems Intern',
+        'Machine Learning Intern',
+        'Automation Intern',
+        'Electrical Engineering Intern',
+        'Electrical Maintenance',
+        'Electrical Engineering Apprenticeship',
+        'Automation Apprenticeship',
+        'Apprenticeship Electrical',
+        'Instrumentation Intern',
+        'PLC Intern',
+        'Robotics Intern',
+        'Software Engineer Intern',
+        'Fullstack Developer Intern',
 
-    // Magang (Indonesian - internship)
-    'Magang Teknik Elektro',
-    'Magang Elektro',
-    'Magang Electrical',
-    'Magang Maintenance',
-    'Magang Otomasi',
-    'Magang Embedded System',
-    'Magang IoT',
-    'Magang AI',
-    'Magang PLC',
-    'Magang Instrumentasi',
-    'Magang IT',
-    'Magang Fullstack',
+        // Magang (Indonesian - internship)
+        'Magang Teknik Elektro',
+        'Magang Elektro',
+        'Magang Electrical',
+        'Magang Maintenance',
+        'Magang Otomasi',
+        'Magang Embedded System',
+        'Magang IoT',
+        'Magang AI',
+        'Magang PLC',
+        'Magang Instrumentasi',
+        'Magang IT',
+        'Magang Fullstack',
 
-    // Kerja Praktek / Kerja Praktik (Indonesian - university-required
-    // practical placement; both spellings are common in real postings)
-    'Kerja Praktek Teknik Elektro',
-    'Kerja Praktik Teknik Elektro',
-    'Kerja Praktek Elektro',
-    'Kerja Praktek Otomasi',
-    'Kerja Praktek IoT',
-    'Kerja Praktek Embedded System',
-    'Kerja Praktek PLC',
-    'KP Teknik Elektro',
+        // Kerja Praktek / Kerja Praktik (Indonesian - university-required
+        // practical placement; both spellings are common in real postings)
+        'Kerja Praktek Teknik Elektro',
+        'Kerja Praktik Teknik Elektro',
+        'Kerja Praktek Elektro',
+        'Kerja Praktek Otomasi',
+        'Kerja Praktek IoT',
+        'Kerja Praktek Embedded System',
+        'Kerja Praktek PLC',
+        'KP Teknik Elektro',
 
-    // Student-targeted postings, incl. structured entry-level programs
-    'Mahasiswa Teknik Elektro',
-    'Mahasiswa Elektro',
-    'Electrical Engineering Student',
-    'Graduate Engineer Program',
-    'Engineering Trainee',
-    'SCADA Intern',
+        // Student-targeted postings, incl. structured entry-level programs
+        'Mahasiswa Teknik Elektro',
+        'Mahasiswa Elektro',
+        'Electrical Engineering Student',
+        'Graduate Engineer Program',
+        'Engineering Trainee',
+        'SCADA Intern',
+      ],
+    },
   ],
   // How many result pages to pull per keyword, per portal. LinkedIn's own ToS
   // asks for low volume, so it defaults to 1; JobStreet defaults to 2.

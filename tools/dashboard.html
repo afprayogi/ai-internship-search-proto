@@ -297,6 +297,7 @@
   textarea.keyword-list { min-height: 140px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; }
   .settings-help { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
   .modal.wide { max-width: 780px; }
+  .group-panel { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; background: var(--card-bg-2); margin-bottom: 12px; }
   .group-header-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
   #keywordGroupsContainer { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
   .group-card {
@@ -384,8 +385,9 @@
   <div class="server-banner" id="serverBanner"><span class="dot"></span><span id="serverBannerText">Checking for local server...</span></div>
 
   <div class="tab-bar" role="tablist">
-    <button class="tab-btn active" id="tabBtnScraped" role="tab" aria-selected="true">🕵️ Scraped postings</button>
-    <button class="tab-btn" id="tabBtnTracker" role="tab" aria-selected="false">📋 My applications</button>
+    <span id="scraperTabs" style="display:contents"></span>
+    <button class="tab-btn" id="addScraperTabBtn" title="Tambah scraper baru">＋</button>
+    <button class="tab-btn" id="tabBtnTracker" role="tab" aria-selected="false">📋 Lamaran saya</button>
   </div>
 
   <div id="tabPanelScraped" class="tab-panel">
@@ -401,11 +403,20 @@
           <button class="primary" id="runScraperBtn">▶ Run scraper now</button>
         </div>
       </div>
+      <div class="group-panel" id="groupPanel">
+        <div class="group-card-head">
+          <input type="text" id="gp_name" class="g_name" placeholder="Nama scraper (mis. Magang Elektrik)">
+          <label class="checkbox-label"><input type="checkbox" id="gp_enabled" checked> Ikut Run gabungan</label>
+          <button type="button" class="primary" id="gp_run">▶ Run tab ini</button>
+          <button type="button" class="danger" id="gp_delete">🗑️</button>
+        </div>
+        <textarea class="keyword-list" id="gp_keywords" placeholder="Satu keyword per baris, mis. Electrical Engineer Intern"></textarea>
+        <div class="actions" style="margin-top:8px"><button type="button" id="gp_save">💾 Simpan tab ini</button></div>
+      </div>
       <div class="log-box" id="logBox"></div>
       <div class="table-toolbar" style="margin-top:14px;">
         <input type="text" id="scrapedSearch" placeholder="Search title, company, or location...">
         <select id="scrapedPortalFilter"><option value="">All portals</option></select>
-        <select id="scrapedGroupFilter"><option value="">All groups</option></select>
         <select id="scrapedTierFilter"><option value="">All location tiers</option></select>
         <select id="scrapedEligibilityFilter">
           <option value="">All eligibility</option>
@@ -575,17 +586,9 @@
 <div class="modal-backdrop" id="settingsBackdrop">
   <div class="modal wide">
     <h2>Search settings</h2>
-    <p class="settings-help">Controls what "Run scraper now" searches for. Saved to <code>job_scraper/scraper_config.json</code> and used by <code>run_offline_scraper.bat</code> too.</p>
+    <p class="settings-help">Lokasi, halaman per portal, dan skill buat fit-score (dipakai semua tab scraper). Keyword diatur per tab. Saved to <code>job_scraper/scraper_config.json</code> and used by <code>run_offline_scraper.bat</code> too.</p>
     <form id="settingsForm">
       <div class="form-grid">
-        <div class="full">
-          <div class="group-header-row">
-            <label style="margin:0;">Keyword groups</label>
-            <button type="button" id="addGroupBtn">+ Tambah grup baru</button>
-          </div>
-          <p class="settings-help">Tiap grup punya keyword sendiri dan bisa dijalanin sendiri-sendiri. Nonaktifin grup (bukan hapus) buat skip sementara tanpa kehilangan keyword-nya - grup nonaktif dilewatin sama tombol "Run scraper now" gabungan, tapi tetap bisa dijalanin manual lewat tombol Run di card-nya.</p>
-          <div id="keywordGroupsContainer"></div>
-        </div>
         <div>
           <label>Ideal locations (one per line, no relocation needed)</label>
           <textarea id="s_ideal_locations"></textarea>
@@ -615,18 +618,6 @@
     </form>
   </div>
 </div>
-
-<template id="groupCardTemplate">
-  <div class="group-card">
-    <div class="group-card-head">
-      <label class="checkbox-label"><input type="checkbox" class="g_enabled" checked> Aktif</label>
-      <input type="text" class="g_name" placeholder="Nama grup (mis. Magang Elektrik)">
-      <button type="button" class="g_run">▶ Run grup ini</button>
-      <button type="button" class="danger g_delete">🗑️</button>
-    </div>
-    <textarea class="keyword-list g_keywords" placeholder="Satu keyword per baris"></textarea>
-  </div>
-</template>
 
 <div class="modal-backdrop" id="linkedinCookieBackdrop">
   <div class="modal">
@@ -1370,6 +1361,7 @@
     }
     var search = document.getElementById("scrapedSearch").value.trim().toLowerCase();
     var portalF = document.getElementById("scrapedPortalFilter").value;
+    var groupF = activeGroupName;
     var tierF = document.getElementById("scrapedTierFilter").value;
     var eligF = document.getElementById("scrapedEligibilityFilter").value;
     var sortBy = document.getElementById("scrapedSort").value;
@@ -1382,6 +1374,7 @@
       if (expired) expiredCount++;
       if (hideExpired && expired) return false;
       if (portalF && r.portal !== portalF) return false;
+      if (groupF && r.keyword_group && r.keyword_group !== groupF) return false;
       if (tierF && r.location_tier !== tierF) return false;
       if (eligF === "none" ? r.eligibility : (eligF && r.eligibility !== eligF)) return false;
       if (search) {
@@ -1566,58 +1559,15 @@
     }).catch(function () { toast("Could not reach the local server"); });
   });
 
-  // ---------- settings modal: keyword groups ----------
+  // ---------- settings modal (dipakai bareng semua tab scraper) ----------
   var settingsBackdrop = document.getElementById("settingsBackdrop");
-  var groupsContainer = document.getElementById("keywordGroupsContainer");
-  var groupCardTemplate = document.getElementById("groupCardTemplate");
   function linesToArray(text) {
     return text.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
   }
-  function addGroupCard(group) {
-    var g = group || { name: "", enabled: true, keywords: [] };
-    var node = groupCardTemplate.content.firstElementChild.cloneNode(true);
-    node.querySelector(".g_name").value = g.name || "";
-    node.querySelector(".g_enabled").checked = g.enabled !== false;
-    node.querySelector(".g_keywords").value = (g.keywords || []).join("\n");
-    node.querySelector(".g_delete").addEventListener("click", function () {
-      var kw = linesToArray(node.querySelector(".g_keywords").value);
-      if (kw.length && !confirm("Hapus grup \"" + (node.querySelector(".g_name").value || "(tanpa nama)") + "\" beserta " + kw.length + " keyword-nya?")) return;
-      node.remove();
-    });
-    node.querySelector(".g_run").addEventListener("click", function () {
-      var name = node.querySelector(".g_name").value.trim();
-      if (!name) { toast("Kasih nama grup ini dulu sebelum di-run"); return; }
-      var kw = linesToArray(node.querySelector(".g_keywords").value);
-      if (!kw.length) { toast("Grup ini belum ada keyword-nya"); return; }
-      settingsBackdrop.classList.remove("open");
-      showTab("scraped");
-      runScraper(name);
-    });
-    groupsContainer.appendChild(node);
-  }
-  function renderGroupCards(groups) {
-    groupsContainer.innerHTML = "";
-    (groups && groups.length ? groups : [{ name: "Default", enabled: true, keywords: [] }]).forEach(addGroupCard);
-  }
-  function collectGroupsFromDom() {
-    return Array.from(groupsContainer.querySelectorAll(".group-card")).map(function (card) {
-      return {
-        name: card.querySelector(".g_name").value.trim() || "Grup tanpa nama",
-        enabled: card.querySelector(".g_enabled").checked,
-        keywords: linesToArray(card.querySelector(".g_keywords").value),
-      };
-    });
-  }
-  document.getElementById("addGroupBtn").addEventListener("click", function () {
-    addGroupCard({ name: "", enabled: true, keywords: [] });
-    groupsContainer.lastElementChild.querySelector(".g_name").focus();
-  });
-
   document.getElementById("settingsBtn").addEventListener("click", function () {
     if (!serverMode) return;
     fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
       scraperConfig = cfg;
-      renderGroupCards(cfg.keywordGroups || []);
       document.getElementById("s_ideal_locations").value = (cfg.idealLocations || []).join("\n");
       document.getElementById("s_acceptable_locations").value = (cfg.acceptableLocations || []).join("\n");
       document.getElementById("s_linkedin_pages").value = cfg.linkedinMaxPages || 1;
@@ -1632,24 +1582,107 @@
   settingsBackdrop.addEventListener("click", function (e) { if (e.target === settingsBackdrop) settingsBackdrop.classList.remove("open"); });
   document.getElementById("settingsForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var groups = collectGroupsFromDom();
-    var totalKeywords = groups.reduce(function (sum, g) { return sum + g.keywords.length; }, 0);
-    var body = {
-      keywordGroups: groups,
+    scraperConfig = Object.assign({}, scraperConfig, {
       idealLocations: linesToArray(document.getElementById("s_ideal_locations").value),
       acceptableLocations: linesToArray(document.getElementById("s_acceptable_locations").value),
       linkedinMaxPages: parseInt(document.getElementById("s_linkedin_pages").value, 10) || 1,
       jobstreetMaxPages: parseInt(document.getElementById("s_jobstreet_pages").value, 10) || 2,
       profileSkills: linesToArray(document.getElementById("s_profile_skills").value),
-    };
-    if (!totalKeywords && !confirm("No keywords set in any group - \"Run scraper now\" won't find anything until you add some. Save anyway?")) return;
+    });
+    saveScraperConfig(function () {
+      settingsBackdrop.classList.remove("open");
+      toast("Search settings saved");
+    });
+  });
+
+  // ---------- scraper tabs: satu tab = satu scraper (nama + keyword sendiri) ----------
+  var activeGroupName = "";
+  var currentView = "scraper";
+  function groupsList() { return (scraperConfig && scraperConfig.keywordGroups) || []; }
+  function findGroup(name) {
+    return groupsList().filter(function (g) { return g.name === name; })[0] || null;
+  }
+  function saveScraperConfig(cb) {
+    var body = Object.assign({}, scraperConfig);
+    delete body.keywords;
+    if (!body.keywordGroups) body.keywordGroups = [];
     fetch("/api/config", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    }).then(function (r) { return r.json(); }).then(function () {
-      settingsBackdrop.classList.remove("open");
-      toast(totalKeywords ? "Search settings saved" : "Search settings saved (no keywords)");
-    }).catch(function () { toast("Could not save settings"); });
+    }).then(function (r) { return r.json(); }).then(function () { if (cb) cb(); })
+      .catch(function () { toast("Could not save settings"); });
+  }
+  function renderScraperTabs() {
+    var box = document.getElementById("scraperTabs");
+    if (!box) return;
+    box.innerHTML = "";
+    groupsList().forEach(function (g) {
+      var b = document.createElement("button");
+      b.className = "tab-btn" + (currentView === "scraper" && g.name === activeGroupName ? " active" : "");
+      b.textContent = "🕵️ " + g.name + (g.enabled === false ? " (off)" : "");
+      b.addEventListener("click", function () { selectGroup(g.name); });
+      box.appendChild(b);
+    });
+    document.getElementById("addScraperTabBtn").style.display = serverMode ? "" : "none";
+    document.getElementById("tabBtnTracker").classList.toggle("active", currentView === "tracker");
+  }
+  function fillGroupPanel() {
+    var g = findGroup(activeGroupName);
+    var panel = document.getElementById("groupPanel");
+    panel.style.display = g ? "" : "none";
+    if (!g) return;
+    document.getElementById("gp_name").value = g.name;
+    document.getElementById("gp_enabled").checked = g.enabled !== false;
+    document.getElementById("gp_keywords").value = (g.keywords || []).join("\n");
+  }
+  function selectGroup(name) {
+    activeGroupName = name;
+    scrapedPage = 1;
+    showTab("scraped");
+    fillGroupPanel();
+    renderScrapedTable();
+  }
+  document.getElementById("addScraperTabBtn").addEventListener("click", function () {
+    if (!serverMode) return;
+    var n = groupsList().length + 1, name = "Scraper " + n;
+    while (findGroup(name)) { n++; name = "Scraper " + n; }
+    scraperConfig.keywordGroups = groupsList().concat([{ name: name, enabled: true, keywords: [] }]);
+    saveScraperConfig(function () { selectGroup(name); document.getElementById("gp_name").focus(); });
   });
+  function readGroupPanel() {
+    var g = findGroup(activeGroupName);
+    var newName = document.getElementById("gp_name").value.trim() || g.name;
+    if (newName !== g.name && findGroup(newName)) { toast("Nama tab sudah dipakai"); return false; }
+    g.name = newName;
+    g.enabled = document.getElementById("gp_enabled").checked;
+    g.keywords = linesToArray(document.getElementById("gp_keywords").value);
+    activeGroupName = newName;
+    return true;
+  }
+  document.getElementById("gp_save").addEventListener("click", function () {
+    if (!findGroup(activeGroupName) || !readGroupPanel()) return;
+    saveScraperConfig(function () { renderScraperTabs(); renderScrapedTable(); toast("Tab disimpan"); });
+  });
+  document.getElementById("gp_run").addEventListener("click", function () {
+    if (!findGroup(activeGroupName) || !readGroupPanel()) return;
+    if (!findGroup(activeGroupName).keywords.length) { toast("Isi keyword dulu"); return; }
+    saveScraperConfig(function () { renderScraperTabs(); runScraper(activeGroupName); });
+  });
+  document.getElementById("gp_delete").addEventListener("click", function () {
+    var g = findGroup(activeGroupName);
+    if (!g || !confirm("Hapus tab \"" + g.name + "\" beserta " + (g.keywords || []).length + " keyword-nya?")) return;
+    scraperConfig.keywordGroups = groupsList().filter(function (x) { return x !== g; });
+    saveScraperConfig(function () {
+      activeGroupName = groupsList().length ? groupsList()[0].name : "";
+      fillGroupPanel(); renderScraperTabs(); renderScrapedTable();
+    });
+  });
+  function loadScraperConfig() {
+    fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
+      scraperConfig = cfg;
+      if (!findGroup(activeGroupName)) activeGroupName = groupsList().length ? groupsList()[0].name : "";
+      fillGroupPanel(); renderScraperTabs(); renderScrapedTable();
+    }).catch(function () { /* server down - tabs stay empty */ });
+  }
 
   // ---------- LinkedIn cookie modal ----------
   var linkedinCookieBackdrop = document.getElementById("linkedinCookieBackdrop");
@@ -1759,21 +1792,18 @@
   document.getElementById("runScraperBtn").addEventListener("click", function () { runScraper(""); });
 
   // ---------- tabs ----------
-  var tabBtnScraped = document.getElementById("tabBtnScraped");
   var tabBtnTracker = document.getElementById("tabBtnTracker");
   var tabPanelScraped = document.getElementById("tabPanelScraped");
   var tabPanelTracker = document.getElementById("tabPanelTracker");
   function showTab(name) {
-    var scraped = name === "scraped";
+    var scraped = name !== "tracker";
+    currentView = scraped ? "scraper" : "tracker";
     tabPanelScraped.hidden = !scraped;
     tabPanelTracker.hidden = scraped;
-    tabBtnScraped.classList.toggle("active", scraped);
-    tabBtnTracker.classList.toggle("active", !scraped);
-    tabBtnScraped.setAttribute("aria-selected", String(scraped));
     tabBtnTracker.setAttribute("aria-selected", String(!scraped));
+    renderScraperTabs();
     try { localStorage.setItem(STORAGE_KEY + ".activeTab", name); } catch (e) { /* ignore */ }
   }
-  tabBtnScraped.addEventListener("click", function () { showTab("scraped"); });
   tabBtnTracker.addEventListener("click", function () { showTab("tracker"); });
   (function restoreTab() {
     var saved = null;
@@ -1788,6 +1818,7 @@
       serverMode = true;
       setServerBanner(true);
       loadScraped();
+      loadScraperConfig();
       // Only seed from the on-disk tracker if this browser has no local data
       // yet, so an existing localStorage tracker is never silently overwritten.
       if (data.length === 0) {

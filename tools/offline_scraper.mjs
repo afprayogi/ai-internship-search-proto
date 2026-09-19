@@ -15,7 +15,8 @@
 // as many times as you want, without opening Claude Code or spending any AI usage.
 //
 // Run manually:   bun run tools/offline_scraper.mjs   (or double-click run_offline_scraper.bat)
-// Edit queries:   change KEYWORDS below.
+// Edit queries:   edit keyword groups via the dashboard's Search settings panel
+//                 (or job_scraper/scraper_config.json's keywordGroups directly).
 // Output:         job_scraper/offline_jobs_log.csv (append-only, one row per new listing)
 // Dedup state:    job_scraper/offline_seen.json (separate from Claude's own seen_jobs.json
 //                  on purpose, so this script never touches /scrape's state)
@@ -46,7 +47,14 @@ function loadConfig() {
   if (!existsSync(CONFIG_PATH)) return DEFAULT_CONFIG;
   try {
     const onDisk = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
-    return { ...DEFAULT_CONFIG, ...onDisk };
+    const merged = { ...DEFAULT_CONFIG, ...onDisk };
+    // Pre-groups config files only ever had a flat `keywords` array. Wrap it
+    // in a single "Default" group rather than forcing a one-time manual
+    // migration - an old job_scraper/scraper_config.json just keeps working.
+    if (!onDisk.keywordGroups && Array.isArray(onDisk.keywords)) {
+      merged.keywordGroups = [{ name: 'Default', enabled: true, keywords: onDisk.keywords }];
+    }
+    return merged;
   } catch {
     console.error(`  [warn] job_scraper/scraper_config.json gagal dibaca, pakai default bawaan.`);
     return DEFAULT_CONFIG;
@@ -54,7 +62,22 @@ function loadConfig() {
 }
 
 const CONFIG = loadConfig();
-const KEYWORDS = CONFIG.keywords;
+const KEYWORD_GROUPS = Array.isArray(CONFIG.keywordGroups) ? CONFIG.keywordGroups : [];
+
+// Which group(s) to search this run. Set by the dashboard's per-group "Run"
+// button (SCRAPER_GROUP=<name> on the spawned process); double-clicking
+// run_offline_scraper.bat or the dashboard's combined "Run scraper now"
+// leaves it unset, which searches every group that isn't disabled.
+const RUN_GROUP = (process.env.SCRAPER_GROUP || '').trim();
+const ACTIVE_GROUPS = RUN_GROUP
+  ? KEYWORD_GROUPS.filter((g) => g.name === RUN_GROUP)
+  : KEYWORD_GROUPS.filter((g) => g.enabled !== false);
+if (RUN_GROUP && !ACTIVE_GROUPS.length) {
+  console.error(`  [warn] Grup keyword "${RUN_GROUP}" tidak ketemu di scraper_config.json - gak ada yang dicari.`);
+}
+// Flattened {keyword, group} pairs - every search loop below iterates this
+// once instead of re-implementing the group nesting four times over.
+const KEYWORD_ENTRIES = ACTIVE_GROUPS.flatMap((g) => (g.keywords || []).map((k) => ({ keyword: k, group: g.name })));
 
 // How many result pages to pull per keyword, per portal. LinkedIn's own ToS asks
 // for low volume, so it defaults to 1 page; JobStreet is the main coverage gap
@@ -71,7 +94,7 @@ const ACCEPTABLE_LOCATIONS = CONFIG.acceptableLocations;
 const PROFILE_SKILLS = CONFIG.profileSkills || [];
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-const CSV_HEADER = 'found_date,portal,source_type,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,requirements,eligibility,deadline,deadline_iso,fit_score,apply_method,url\n';
+const CSV_HEADER = 'found_date,portal,source_type,keyword_group,title,company,location,location_tier,employment_type_hint,salary,posted_date,description,requirements,eligibility,deadline,deadline_iso,fit_score,apply_method,url\n';
 
 // ---------------------------------------------------------------------------
 // bun CLI helper (LinkedIn)
@@ -800,6 +823,7 @@ function appendRow(job) {
     new Date().toISOString().slice(0, 10),
     job.portal,
     job.source_type || 'job_listing',
+    job.keyword_group || '',
     job.title,
     job.company,
     job.location,
@@ -996,15 +1020,15 @@ async function main() {
 
   const collected = [];
 
-  for (const q of KEYWORDS) {
-    console.log(`  LinkedIn: "${q}"`);
+  for (const { keyword: q, group } of KEYWORD_ENTRIES) {
+    console.log(`  LinkedIn [${group}]: "${q}"`);
     for (let page = 1; page <= LINKEDIN_MAX_PAGES; page++) {
       const data = runCli(LINKEDIN_CLI, ['-q', q, '-l', 'Indonesia', '--jobage', '14', '--limit', '20', '--page', String(page)], `linkedin "${q}" p${page}`);
       const before = collected.length;
       let newish = 0;
       for (const job of data.results || []) {
         if (!job.url) continue;
-        collected.push({ portal: 'linkedin', keyword: q, title: job.title, company: job.company, location: job.location, date: job.date, url: job.url, description: '' });
+        collected.push({ portal: 'linkedin', keyword: q, keyword_group: group, title: job.title, company: job.company, location: job.location, date: job.date, url: job.url, description: '' });
         if (!seen[job.url]) newish++;
       }
       logQueryProgress(collected.length - before, newish);
@@ -1013,12 +1037,12 @@ async function main() {
 
   let consecutiveBlocks = 0;
   let jobstreetGaveUp = false;
-  for (const q of KEYWORDS) {
+  for (const { keyword: q, group } of KEYWORD_ENTRIES) {
     if (jobstreetGaveUp) break;
-    console.log(`  JobStreet: "${q}"`);
+    console.log(`  JobStreet [${group}]: "${q}"`);
     for (let page = 1; page <= JOBSTREET_MAX_PAGES; page++) {
       const { jobs, blocked } = await fetchJobStreetPage(q, page);
-      jobs.forEach((j) => { j.keyword = q; });
+      jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
       collected.push(...jobs);
       if (!blocked) {
         const newish = jobs.filter((j) => !seen[j.url]).length;
@@ -1038,10 +1062,10 @@ async function main() {
     }
   }
 
-  for (const q of KEYWORDS) {
-    console.log(`  Glints: "${q}"`);
+  for (const { keyword: q, group } of KEYWORD_ENTRIES) {
+    console.log(`  Glints [${group}]: "${q}"`);
     const jobs = await fetchGlintsPage(q);
-    jobs.forEach((j) => { j.keyword = q; });
+    jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
     collected.push(...jobs);
     const newish = jobs.filter((j) => !seen[j.url]).length;
     logQueryProgress(jobs.length, newish);
@@ -1054,10 +1078,10 @@ async function main() {
     let feedSearchCount = 0;
     let feedDetailCount = 0;
     let feedBlocked = false;
-    for (const q of KEYWORDS) {
+    for (const { keyword: q, group } of KEYWORD_ENTRIES) {
       if (feedBlocked || feedSearchCount >= FEED_MAX_SEARCHES_PER_RUN || feedDetailCount >= FEED_MAX_DETAIL_PER_RUN) break;
       feedSearchCount++;
-      console.log(`  LinkedIn feed: "${q}"`);
+      console.log(`  LinkedIn feed [${group}]: "${q}"`);
       const { urls, blocked } = await fetchLinkedinFeedSearch(q, feedCookie);
       if (blocked) {
         console.error('  [linkedin-feed] Kena halaman login/checkpoint - berhenti total buat run ini. Cek akun LinkedIn kamu, cookie mungkin udah gak valid/expired.');
@@ -1078,7 +1102,7 @@ async function main() {
         feedDetailCount++;
         newish++;
         collected.push({
-          portal: 'linkedin', keyword: q, source_type: 'feed_post',
+          portal: 'linkedin', keyword: q, keyword_group: group, source_type: 'feed_post',
           title: text ? text.slice(0, 80) : titleFromPostSlug(url),
           company: '', location: '', date: '', url, description: text,
         });
