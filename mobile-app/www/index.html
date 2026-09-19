@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>try{var __t=localStorage.getItem("jobsearch.theme");if(__t)document.documentElement.setAttribute("data-theme",__t);}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Job Search Dashboard</title>
 <link rel="manifest" href="/manifest.json">
@@ -440,6 +441,43 @@
     td[data-label="Portal"], td[data-label="Link"], td[data-label="Tier"] { display: block; text-align: right; }
     td[data-label="Portal"]::before, td[data-label="Link"]::before, td[data-label="Tier"]::before { float: left; }
   }
+
+  /* ---------- welcome card, bottom nav, polish ---------- */
+  body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  .welcome { position: relative; margin-bottom: 16px; padding: 18px 20px; border-radius: 16px; color: #fff;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed); box-shadow: 0 8px 24px rgba(79,70,229,.25); }
+  .welcome[hidden] { display: none; }
+  .welcome h2 { margin: 0 0 6px; font-size: 18px; color: #fff; }
+  .welcome p { margin: 0 0 10px; font-size: 14px; line-height: 1.5; opacity: .95; }
+  .welcome-steps { margin: 0 0 12px; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+  .welcome-steps li { margin-bottom: 4px; }
+  .welcome-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .welcome-actions button { border: none; }
+  .welcome-actions button.primary { background: #fff; color: #4f46e5; }
+  .welcome-actions button:not(.primary) { background: rgba(255,255,255,.18); color: #fff; }
+  .welcome-x { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; min-height: 0 !important; padding: 0; border: none; border-radius: 50%; background: rgba(255,255,255,.18); color: #fff; font-size: 18px; }
+  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; font-weight: 500; }
+  .switch-row input[type="checkbox"] { width: 20px; height: 20px; flex: none; }
+  .data-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .phone-only-data { display: none; }
+  .bottom-nav { display: none; }
+  @media (max-width: 760px) {
+    .phone-only-data { display: block; }
+    header .actions #importBtn, header .actions #exportBtn, header .actions #clearBtn { display: none; }
+    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: space-around; align-items: stretch;
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--border); box-shadow: 0 -4px 16px rgba(0,0,0,.08); }
+    .bottom-nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; min-height: 52px; border: none; box-shadow: none;
+      background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 600; border-radius: 12px; }
+    .bottom-nav button span { font-size: 20px; line-height: 1; }
+    .bottom-nav button.active { color: var(--accent); background: var(--accent-light); }
+    .bottom-nav .nav-run { flex: 0 0 64px; }
+    .bottom-nav .nav-run span { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; margin-top: -18px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 16px; box-shadow: 0 4px 12px rgba(79,70,229,.45); }
+    .section-head .actions #runScraperBtn, .section-head .actions #settingsBtn { display: none; }
+    .tab-bar { display: none; }
+    #phoneScraperSel { width: 100%; margin-bottom: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-weight: 600; }
+    .welcome { padding: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -460,6 +498,19 @@
   </header>
 
   <div class="server-banner" id="serverBanner"><span class="dot"></span><span id="serverBannerText">Checking for local server...</span></div>
+
+  <div class="welcome" id="welcomeCard" hidden>
+    <button class="welcome-x" id="welcomeClose" type="button" aria-label="Tutup">×</button>
+    <h2>👋 Selamat datang!</h2>
+    <p>Aplikasi ini mencari lowongan magang/kerja dari LinkedIn, JobStreet, dan Glints, lalu membantu kamu melacak lamaran. Mulai dalam 3 langkah:</p>
+    <ol class="welcome-steps">
+      <li><b>Isi kata kunci</b> di tab scraper, mis. <i>Electrical Engineer Intern</i> (ketik lalu Enter).</li>
+      <li><b>Tekan ▶ Jalankan</b>. Hasil muncul sebagai kartu, lengkap dengan kecocokan, syarat, dan deadline.</li>
+      <li><b>Tekan + Track</b> pada lowongan yang menarik untuk menyimpannya di <b>Lamaran saya</b>.</li>
+    </ol>
+    <p class="welcome-auto" id="welcomeAuto" hidden>🔔 Di aplikasi ini pencarian bisa berjalan otomatis saat aplikasi dibuka dan kamu dapat notifikasi lowongan baru. Atur di <b>⚙️ Setelan</b>.</p>
+    <div class="welcome-actions"><button class="primary" id="welcomeStart" type="button">Mulai</button><button id="welcomeHide" type="button">Jangan tampilkan lagi</button></div>
+  </div>
 
   <div class="tab-bar" role="tablist">
     <span id="scraperTabs" style="display:contents"></span>
@@ -687,6 +738,18 @@
           <textarea id="s_profile_skills"></textarea>
           <p class="settings-help">Keyword overlap only, not real judgment of fit - a posting mentioning more of these scores higher. Tune this list if it over- or under-matches for you.</p>
         </div>
+        <div class="full" id="autoBox" style="display:none">
+          <label>🔔 Otomatis &amp; notifikasi</label>
+          <label class="switch-row"><input type="checkbox" id="s_auto_enabled"> Cari otomatis saat aplikasi dibuka</label>
+          <label class="switch-row">Minimal jeda antar pencarian
+            <select id="s_auto_hours"><option value="3">3 jam</option><option value="6">6 jam</option><option value="12">12 jam</option><option value="24">24 jam</option></select></label>
+          <label class="switch-row"><input type="checkbox" id="s_notify_enabled"> Beri notifikasi kalau ada lowongan baru</label>
+          <p class="settings-help">Pencarian berjalan saat aplikasi dibuka atau kembali ke layar. Android tidak mengizinkan aplikasi ini mencari saat benar-benar tertutup.</p>
+        </div>
+        <div class="full phone-only-data">
+          <label>Data</label>
+          <div class="data-row"><button type="button" data-proxy="importBtn">Import CSV</button><button type="button" data-proxy="exportBtn">Export CSV</button><button type="button" class="danger" data-proxy="clearBtn">Hapus semua lamaran</button></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" id="settingsCancelBtn">Cancel</button>
@@ -741,6 +804,12 @@
   </div>
 </div>
 
+<nav class="bottom-nav" id="bottomNav" aria-label="Navigasi utama">
+  <button type="button" data-nav="jobs"><span>🔍</span>Lowongan</button>
+  <button type="button" data-nav="run" class="nav-run"><span>▶</span>Cari</button>
+  <button type="button" data-nav="tracker"><span>📋</span>Lamaran</button>
+  <button type="button" data-nav="settings"><span>⚙️</span>Setelan</button>
+</nav>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1732,6 +1801,10 @@
       document.getElementById("s_linkedin_pages").value = cfg.linkedinMaxPages || 1;
       document.getElementById("s_jobstreet_pages").value = cfg.jobstreetMaxPages || 2;
       document.getElementById("s_profile_skills").value = (cfg.profileSkills || []).join("\n");
+      document.getElementById("autoBox").style.display = window.__STANDALONE__ ? "" : "none";
+      document.getElementById("s_auto_enabled").checked = cfg.autoRunEnabled !== false;
+      document.getElementById("s_auto_hours").value = String(cfg.autoRunHours || 12);
+      document.getElementById("s_notify_enabled").checked = cfg.notifyEnabled !== false;
       settingsBackdrop.classList.add("open");
     }).catch(function () { toast("Could not reach the local server"); });
   });
@@ -1747,7 +1820,11 @@
       linkedinMaxPages: parseInt(document.getElementById("s_linkedin_pages").value, 10) || 1,
       jobstreetMaxPages: parseInt(document.getElementById("s_jobstreet_pages").value, 10) || 2,
       profileSkills: linesToArray(document.getElementById("s_profile_skills").value),
+      autoRunEnabled: document.getElementById("s_auto_enabled").checked,
+      autoRunHours: parseInt(document.getElementById("s_auto_hours").value, 10) || 12,
+      notifyEnabled: document.getElementById("s_notify_enabled").checked,
     });
+    if (scraperConfig.notifyEnabled && window.__askNotifyPermission) window.__askNotifyPermission();
     saveScraperConfig(function () {
       settingsBackdrop.classList.remove("open");
       toast("Search settings saved");
@@ -1968,6 +2045,63 @@
     var saved = null;
     try { saved = localStorage.getItem(STORAGE_KEY + ".activeTab"); } catch (e) { /* ignore */ }
     showTab(saved === "tracker" ? "tracker" : "scraped");
+  })();
+
+  // ---------- theme, welcome card, bottom nav ----------
+  (function uiExtras() {
+    var root = document.documentElement, tb = document.getElementById("themeToggleBtn");
+    function isDark() { var t = root.getAttribute("data-theme"); return t ? t === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; }
+    function paint() { tb.textContent = isDark() ? "☀️" : "🌙"; }
+    tb.addEventListener("click", function () {
+      var next = isDark() ? "light" : "dark"; root.setAttribute("data-theme", next);
+      try { localStorage.setItem("jobsearch.theme", next); } catch (e) { /* ignore */ }
+      paint();
+    });
+    paint();
+
+    var wc = document.getElementById("welcomeCard");
+    function seen() { try { return localStorage.getItem("jobsearch.welcomeDone") === "1"; } catch (e) { return false; } }
+    function done() { wc.hidden = true; try { localStorage.setItem("jobsearch.welcomeDone", "1"); } catch (e) { /* ignore */ } }
+    if (!seen()) wc.hidden = false;
+    document.getElementById("welcomeAuto").hidden = !window.__STANDALONE__;
+    document.getElementById("welcomeClose").addEventListener("click", function () { wc.hidden = true; });
+    document.getElementById("welcomeHide").addEventListener("click", done);
+    document.getElementById("welcomeStart").addEventListener("click", function () {
+      done(); var k = document.getElementById("gp_keywords"); var i = k && k.parentNode.querySelector(".chip-add input"); if (i) i.focus();
+    });
+
+    var nav = document.getElementById("bottomNav");
+    function markNav() {
+      var cur = currentView === "tracker" ? "tracker" : "jobs";
+      [].forEach.call(nav.querySelectorAll("button"), function (b) { b.classList.toggle("active", b.getAttribute("data-nav") === cur); });
+    }
+    nav.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var a = b.getAttribute("data-nav");
+      if (a === "jobs") { showTab("scraped"); window.scrollTo(0, 0); }
+      else if (a === "tracker") { showTab("tracker"); window.scrollTo(0, 0); }
+      else if (a === "settings") { document.getElementById("settingsBtn").click(); }
+      else if (a === "run") { showTab("scraped"); document.getElementById("runScraperBtn").click(); }
+      setTimeout(markNav, 0);
+    });
+    var origShow = showTab; showTab = function (n) { origShow(n); markNav(); };
+    markNav();
+    document.getElementById("settingsForm").addEventListener("click", function (e) {
+      var p = e.target.getAttribute && e.target.getAttribute("data-proxy");
+      if (p) { settingsBackdrop.classList.remove("open"); document.getElementById(p).click(); }
+    });
+    // phone: top tab-bar is hidden, so switching scrapers goes through a select
+    var sel = document.createElement("select"); sel.id = "phoneScraperSel"; sel.className = "phone-only-data";
+    sel.setAttribute("aria-label", "Pilih scraper");
+    var gp = document.getElementById("groupPanel"); gp.parentNode.insertBefore(sel, gp);
+    sel.addEventListener("change", function () {
+      if (sel.value === "__add") { document.getElementById("addScraperTabBtn").click(); } else { selectGroup(sel.value); }
+    });
+    var origRender = renderScraperTabs; renderScraperTabs = function () {
+      origRender();
+      sel.innerHTML = groupsList().map(function (g) { return '<option value="' + escapeHtml(g.name) + '"' + (g.name === activeGroupName ? " selected" : "") + ">🕵️ " + escapeHtml(g.name) + (g.enabled === false ? " (off)" : "") + "</option>"; }).join("") + '<option value="__add">＋ Tambah scraper…</option>';
+    };
+    renderScraperTabs();
   })();
 
   // ---------- init ----------

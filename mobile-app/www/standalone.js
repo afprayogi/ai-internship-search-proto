@@ -52,11 +52,44 @@
         var scraped = load(K.scraped, []);
         store(K.scraped, res.records.concat(scraped));
         store(K.seen, Object.assign(seen, res.seenAdditions));
+        store('sa.lastRun', Date.now());
+        var n = res.records.length;
+        if (n && getConfig().notifyEnabled !== false) {
+          var top = res.records.slice(0, 3).map(function (x) { return x.title + ' - ' + x.company; }).join(String.fromCharCode(10));
+          notify(n + ' lowongan baru', top);
+        }
       })
       .catch(function (e) { pushLog('[error] ' + (e && e.message || e)); })
       .then(function () { run.running = false; run.exitCode = 0; pushLog('[app] Selesai.'); emitDone(); });
     return { started: true };
   }
+
+  // ---- notifications + auto-run (only inside the app) -------------------------
+  function LN() { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications; }
+  window.__askNotifyPermission = function () {
+    var p = LN(); if (!p) return;
+    p.checkPermissions().then(function (r) { if (r.display !== 'granted') return p.requestPermissions(); }).catch(function () {});
+  };
+  function notify(title, body) {
+    var p = LN(); if (!p) return;
+    p.checkPermissions().then(function (r) {
+      if (r.display !== 'granted') return;
+      return p.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 2147483000, title: title, body: body }] });
+    }).catch(function () {});
+  }
+  function lastRunAt() { return Number(load('sa.lastRun', 0)) || 0; }
+  function maybeAutoRun() {
+    var c = getConfig();
+    if (c.autoRunEnabled === false || run.running) return;
+    if (!(c.keywordGroups || []).some(function (g) { return g.enabled !== false && (g.keywords || []).length; })) return;
+    if (Date.now() - lastRunAt() < (c.autoRunHours || 12) * 3600000) return;
+    var btn = document.getElementById('runScraperBtn');
+    if (btn && !btn.disabled) { btn.click(); }
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(maybeAutoRun, 1500); });
+  window.addEventListener('load', function () {
+    setTimeout(function () { if (getConfig().notifyEnabled !== false) window.__askNotifyPermission(); maybeAutoRun(); }, 3000);
+  });
 
   // ---- fake /api routes ----------------------------------------------------
   function json(data, status) {

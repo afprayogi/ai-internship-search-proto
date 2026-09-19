@@ -163,6 +163,8 @@ The 🕵️ area is now a row of **tabs, one per scraper** (e.g. "Magang", "Data
 
 A real installable Android app (Capacitor 6) in `mobile-app/`. It runs the **same dashboard UI** and a **browser port of the scraper** directly on the phone: LinkedIn, JobStreet, and Glints searching, eligibility/requirements/deadline detection, fit score, already-applied check, and the tracker, all stored on the phone. Phone-friendly layout: postings become cards, tabs scroll sideways, dialogs are full screen.
 
+- **New-user friendly:** a welcome card with 3 steps, bottom navigation (Lowongan / Cari / Lamaran / Setelan), a scraper picker, and a light/dark theme toggle (also on the web dashboard).
+- **Notifications + auto-run:** the app asks for notification permission and posts a notification when a run finds new postings. With "Cari otomatis" on (⚙️ Setelan, default every 12h) it runs a search when you open the app or return to it. Android does not let this app search while fully closed; true background scheduling is not implemented.
 - Not available on the phone: LinkedIn feed-post search (needs your cookie) and WhatsApp alerts.
 - Outbound requests go through Capacitor's native HTTP, so no CORS proxy is needed. Portals may still block a phone IP; the run log in the app shows what happened.
 - Build: see [`mobile-app/README.md`](mobile-app/README.md) (needs JDK 17 + Android SDK). Install `mobile-app/android/app/build/outputs/apk/debug/app-debug.apk` on the phone (allow "install unknown apps").
