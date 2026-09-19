@@ -170,6 +170,12 @@ A real installable Android app (Capacitor 6) in `mobile-app/`. It runs the **sam
 - Build: see [`mobile-app/README.md`](mobile-app/README.md) (needs JDK 17 + Android SDK). Install `mobile-app/android/app/build/outputs/apk/debug/app-debug.apk` on the phone (allow "install unknown apps").
 - The dashboard is also installable as a PWA when the PC server is running (it listens on the LAN, open `http://<PC-IP>:4870/` on the phone).
 
+### 4f. MAGENTA (BUMN internships)
+
+Every run also lists all postings on [magentaku.id](https://magentaku.id) (BUMN internships and jobs; the inventory is small, so it is listed whole and ranked by fit score rather than searched per keyword). On PC it goes through `curl` because MAGENTA's Cloudflare rejects Node/Bun's own fetch; in the Android app it uses the phone's HTTP stack, which is **untested** against that block. Turn it off with `"magentaEnabled": false` in `scraper_config.json`.
+
+MagangHub, Karirhub, MSIB and Ayo Magang Vokasi are not included: MagangHub's site no longer exposes listings anonymously (old API returns 410), and the others have no usable public endpoint.
+
 ### 4e. Scheduled runs (cron-like)
 
 ⚙️ Search settings → **⏰ Jadwal otomatis**: switch it on and add times in 24h format (e.g. `08:00`, `19:00`). Stored as `schedule: {enabled, times[]}` in `scraper_config.json`.

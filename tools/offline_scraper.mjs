@@ -341,6 +341,77 @@ function slugify(text) {
   return (text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'job';
 }
 
+// MAGENTA (magentaku.id, BUMN internships) - a Laravel site: GET /lowongan gives a
+// CSRF token + session cookie, then POST /lowongan/list returns the job cards as HTML
+// inside JSON. The inventory is small (dozens of postings), so we list everything once
+// per run instead of searching per keyword; the fit score ranks relevance.
+function parseMagentaCards(html) {
+  const out = [];
+  const parts = String(html || '').split('job-posting-item').slice(1);
+  for (const c of parts) {
+    const id = (c.match(/data-id="(\d+)"/) || [])[1];
+    if (!id) continue;
+    const kota = (c.match(/data-kota="(\d+)"/) || [])[1] || '';
+    const title = ((c.match(/<h2[^>]*>([^<]*)<\/h2>/) || [])[1] || '').trim();
+    const company = ((c.match(/alt="([^"]*)"/) || [])[1] || '').trim();
+    const location = ((c.match(/<\/h2>\s*<p[^>]*>\s*([^<]*?)\s*<\/p>/) || [])[1] || '').trim();
+    const badges = [];
+    c.replace(/rounded-20px caption">\s*([^<]*?)\s*<\/span>/g, (_m, t) => { badges.push(t); return _m; });
+    const closing = ((c.match(/Penutupan[^<]*<strong[^>]*>([^<]*)</) || [])[1] || '').trim();
+    const published = ((c.match(/Diterbitkan\s*([^<]*)</) || [])[1] || '').trim();
+    out.push({ id, kota, title, company, location, badges, closing, published });
+  }
+  return out;
+}
+
+// magentaku.id sits behind Cloudflare, which rejects Node/Bun's own fetch (TLS
+// fingerprint) with 403 but accepts curl, so this portal shells out to curl.
+const MAGENTA_JAR = path.join(ROOT, 'job_scraper', '.magenta_cookies.txt');
+let magentaToken = null;
+function magentaCurl(args) {
+  return execFileSync('curl', ['-s', '-S', '--max-time', '25', '-A', USER_AGENT, '-b', MAGENTA_JAR, '-c', MAGENTA_JAR, ...args], { encoding: 'utf-8', maxBuffer: 20 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+}
+function magentaOpen() {
+  const html = magentaCurl(['https://magentaku.id/lowongan']);
+  magentaToken = (html.match(/csrf-token" content="([^"]*)/) || [])[1];
+  if (!magentaToken) throw new Error('token tidak ketemu (diblokir Cloudflare atau curl tidak ada)');
+}
+async function magentaPost(pathname, body) {
+  if (!magentaToken) magentaOpen();
+  return magentaCurl(['-X', 'POST', 'https://magentaku.id' + pathname, '-H', 'X-CSRF-TOKEN: ' + magentaToken, '-H', 'X-Requested-With: XMLHttpRequest', '-H', 'Accept: application/json', '-d', new URLSearchParams(body).toString()]);
+}
+async function fetchMagentaJobs() {
+  const jobs = [], seenIds = new Set();
+  try {
+    for (let page = 1; page <= 10; page++) {
+      const data = JSON.parse(await magentaPost('/lowongan/list', { page, type: 'all' }));
+      const cards = parseMagentaCards(data.jobposting).filter((c) => !seenIds.has(c.id));
+      if (!cards.length) break;
+      for (const c of cards) {
+        seenIds.add(c.id);
+        const isIntern = /magang/i.test(c.badges[0] || '');
+        jobs.push({
+          portal: 'magenta', title: decodeHtmlEntities(c.title), company: decodeHtmlEntities(c.company), location: decodeHtmlEntities(c.location), date: '',
+          url: 'https://magentaku.id/lowongan?posting=' + c.id + '&lokasi=' + c.kota,
+          description: c.closing ? 'Batas pendaftaran: ' + c.closing + '.' : '',
+          work_type: isIntern ? 'Internship' : (c.badges[0] || ''), salary: '', _mid: c.id, _mkota: c.kota,
+        });
+      }
+      await sleep(300);
+    }
+  } catch (err) {
+    console.error('  [error] magenta: ' + String(err.message || err).split('\n')[0]);
+  }
+  return jobs;
+}
+async function fetchMagentaDetail(job) {
+  try {
+    const html = await magentaPost('/lowongan/' + job._mid + '/detail', { lokasi: job._mkota, kota_id: job._mkota });
+    const text = htmlToText(html);
+    return (job.description ? job.description + '\n' : '') + text;
+  } catch { return ''; }
+}
+
 async function fetchGlintsPage(query) {
   const url = `https://glints.com/id/opportunities/jobs/explore?keyword=${encodeURIComponent(query)}&country=ID`;
   let html;
@@ -753,6 +824,7 @@ const EMAIL_NEAR_APPLY = /(?:kirim|send|apply|lamar|cv|resume|daftar)[^.\n]{0,60
 const PORTAL_FALLBACK_METHOD = {
   jobstreet: 'Via JobStreet (klik Open)',
   glints: 'Via Glints (klik Open)',
+  magenta: 'Via MAGENTA (klik Open, perlu akun)',
   linkedin: 'Via LinkedIn (klik Open, perlu login)',
 };
 
@@ -762,7 +834,7 @@ function detectApplyMethod(text, portal) {
   const form = text.match(GOOGLE_FORM_PATTERN);
   if (form) return `Google Form: ${form[0]}`;
   const urls = text.match(GENERIC_URL_PATTERN) || [];
-  const external = urls.find((u) => !/linkedin\.com|jobstreet\.com|glints\.com/i.test(u));
+  const external = urls.find((u) => !/linkedin\.com|jobstreet\.com|glints\.com|magentaku\.id/i.test(u));
   if (external) return `Link lain di postingan: ${external}`;
   const email = text.match(EMAIL_NEAR_APPLY);
   if (email) return `Kirim CV via email: ${email[1]}`;
@@ -1072,6 +1144,15 @@ async function main() {
     await sleep(400 + Math.floor(Math.random() * 400)); // jeda sopan antar request
   }
 
+  if (CONFIG.magentaEnabled !== false && KEYWORD_ENTRIES.length) {
+    const mg = KEYWORD_ENTRIES[0].group;
+    console.log(`  MAGENTA [${mg}]: semua lowongan BUMN`);
+    const jobs = await fetchMagentaJobs();
+    jobs.forEach((j) => { j.keyword = 'MAGENTA'; j.keyword_group = mg; });
+    collected.push(...jobs);
+    logQueryProgress(jobs.length, jobs.filter((j) => !seen[j.url]).length);
+  }
+
   const feedCookie = process.env.LINKEDIN_LI_AT_COOKIE;
   if (feedCookie) {
     console.log('\nLinkedIn feed-post search aktif (pakai sesi login kamu sendiri - hati-hati, ini di luar ToS LinkedIn)...');
@@ -1155,6 +1236,10 @@ async function main() {
       const full = await fetchGlintsDetail(job.url);
       if (full) fullText = full;
       await sleep(400 + Math.floor(Math.random() * 400));
+    } else if (job.portal === 'magenta') {
+      const full = await fetchMagentaDetail(job);
+      if (full) fullText = full;
+      await sleep(300 + Math.floor(Math.random() * 300));
     }
     job.description = fullText;
     job.requirements = extractRequirements(fullText);

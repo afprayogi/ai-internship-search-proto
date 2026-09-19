@@ -168,6 +168,72 @@
     }) };
   }
 
+  function parseMagentaCards(html) {
+    const out = [];
+    const parts = String(html || '').split('job-posting-item').slice(1);
+    for (const c of parts) {
+      const id = (c.match(/data-id="(\d+)"/) || [])[1];
+      if (!id) continue;
+      const kota = (c.match(/data-kota="(\d+)"/) || [])[1] || '';
+      const title = ((c.match(/<h2[^>]*>([^<]*)<\/h2>/) || [])[1] || '').trim();
+      const company = ((c.match(/alt="([^"]*)"/) || [])[1] || '').trim();
+      const location = ((c.match(/<\/h2>\s*<p[^>]*>\s*([^<]*?)\s*<\/p>/) || [])[1] || '').trim();
+      const badges = [];
+      c.replace(/rounded-20px caption">\s*([^<]*?)\s*<\/span>/g, (_m, t) => { badges.push(t); return _m; });
+      const closing = ((c.match(/Penutupan[^<]*<strong[^>]*>([^<]*)</) || [])[1] || '').trim();
+      const published = ((c.match(/Diterbitkan\s*([^<]*)</) || [])[1] || '').trim();
+      out.push({ id, kota, title, company, location, badges, closing, published });
+    }
+    return out;
+  }
+  
+  var magentaSession = null;
+  function cookiesFrom(res) {
+    var raw = res.headers.get('set-cookie') || '';
+    return raw.split(/,(?=\s*[A-Za-z0-9_.-]+=)/).map(function (c) { return c.split(';')[0].trim(); }).filter(Boolean).join('; ');
+  }
+  async function magentaOpen() {
+    var res = await fetch('https://magentaku.id/lowongan', { headers: { 'User-Agent': UA, 'Accept-Language': 'id-ID,id;q=0.9' } });
+    var html = await res.text();
+    var token = (html.match(/csrf-token" content="([^"]*)/) || [])[1];
+    if (!res.ok || !token) throw new Error('HTTP ' + res.status + (token ? '' : ' (token tidak ketemu)'));
+    magentaSession = { token: token, cookies: cookiesFrom(res) };
+    return magentaSession;
+  }
+  async function magentaPost(pathname, body) {
+    var s = magentaSession || await magentaOpen();
+    var headers = { 'User-Agent': UA, 'X-CSRF-TOKEN': s.token, 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' };
+    if (s.cookies) headers.Cookie = s.cookies;
+    var res = await fetch('https://magentaku.id' + pathname, { method: 'POST', headers: headers, body: new URLSearchParams(body).toString() });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.text();
+  }
+  async function magentaSearch() {
+    var jobs = [], ids = {}, error = '';
+    try {
+      for (var page = 1; page <= 10; page++) {
+        var data = JSON.parse(await magentaPost('/lowongan/list', { page: page, type: 'all' }));
+        var cards = parseMagentaCards(data.jobposting).filter(function (c) { return !ids[c.id]; });
+        if (!cards.length) break;
+        cards.forEach(function (c) {
+          ids[c.id] = 1;
+          jobs.push({ portal: 'magenta', title: decodeEntities(c.title), company: decodeEntities(c.company), location: decodeEntities(c.location), date: '',
+            url: 'https://magentaku.id/lowongan?posting=' + c.id + '&lokasi=' + c.kota,
+            description: c.closing ? 'Batas pendaftaran: ' + c.closing + '.' : '',
+            work_type: /magang/i.test(c.badges[0] || '') ? 'Internship' : (c.badges[0] || ''), salary: '', _mid: c.id, _mkota: c.kota });
+        });
+        await sleep(300);
+      }
+    } catch (e) { error = String(e.message || e); }
+    return { jobs: jobs, error: error };
+  }
+  async function magentaDetail(job) {
+    try {
+      var html = await magentaPost('/lowongan/' + job._mid + '/detail', { lokasi: job._mkota, kota_id: job._mkota });
+      return (job.description ? job.description + '\n' : '') + htmlToText(html);
+    } catch (e) { return ''; }
+  }
+
   async function glintsDetail(url) {
     try {
       const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*;q=0.8' } });
@@ -230,13 +296,13 @@
     return Math.min(100, Math.round((hits / 8) * 100));
   }
 
-  const FALLBACK = { jobstreet: 'Via JobStreet (klik Open)', glints: 'Via Glints (klik Open)', linkedin: 'Via LinkedIn (klik Open, perlu login)' };
+  const FALLBACK = { jobstreet: 'Via JobStreet (klik Open)', glints: 'Via Glints (klik Open)', magenta: 'Via MAGENTA (klik Open, perlu akun)', linkedin: 'Via LinkedIn (klik Open, perlu login)' };
   function detectApplyMethod(text, portal) {
     const fb = FALLBACK[portal] || 'Via portal (klik Open)';
     if (!text) return fb;
     const form = text.match(/\b(?:docs\.google\.com\/forms\/[^\s)"'<>]+|forms\.gle\/[^\s)"'<>]+)/i);
     if (form) return 'Google Form: ' + form[0];
-    const ext = (text.match(/\bhttps?:\/\/[^\s)"'<>]+/gi) || []).find((u) => !/linkedin\.com|jobstreet\.com|glints\.com/i.test(u));
+    const ext = (text.match(/\bhttps?:\/\/[^\s)"'<>]+/gi) || []).find((u) => !/linkedin\.com|jobstreet\.com|glints\.com|magentaku\.id/i.test(u));
     if (ext) return 'Link lain di postingan: ' + ext;
     const em = text.match(/(?:kirim|send|apply|lamar|cv|resume|daftar)[^.\n]{0,60}?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i);
     return em ? 'Kirim CV via email: ' + em[1] : fb;
@@ -325,6 +391,15 @@
       await sleep(jitter(400, 400));
     }
 
+    if (cfg.magentaEnabled !== false && entries.length) {
+      var mg = entries[0].group;
+      log('MAGENTA [' + mg + ']: semua lowongan BUMN');
+      var mr = await magentaSearch();
+      mr.jobs.forEach(function (j) { j.keyword_group = mg; });
+      collected.push.apply(collected, mr.jobs);
+      log('  -> ' + mr.jobs.length + ' hasil (' + newish(mr.jobs) + ' kemungkinan baru)' + (mr.error ? ' [' + mr.error + ']' : ''));
+    }
+
     const fresh = [], seenRun = new Set();
     for (const j of collected) {
       if (!j.url || seen[j.url] || seenRun.has(j.url) || alreadyApplied(opts.tracker, j.company, j.title)) continue;
@@ -338,6 +413,7 @@
       if (job.portal === 'linkedin') { try { full = (await linkedinDetail(job.url)) || full; } catch (e) { /* keep teaser */ } await sleep(jitter(500, 500)); }
       else if (job.portal === 'jobstreet') { full = (await jobstreetDetail(job.url)) || full; await sleep(jitter(400, 400)); }
       else if (job.portal === 'glints') { full = (await glintsDetail(job.url)) || full; await sleep(jitter(400, 400)); }
+      else if (job.portal === 'magenta') { full = (await magentaDetail(job)) || full; await sleep(jitter(300, 300)); }
       job.description = full;
       job.requirements = extractRequirements(full);
       job.eligibility = classifyEligibility(job.title + ' ' + full);
@@ -361,7 +437,7 @@
     return { records, seenAdditions };
   }
 
-  const api = { runScrape, parseJobCards, linkedinSearch, linkedinDetail, jobstreetSearch, glintsSearch, classifyEligibility, extractRequirements, extractDeadline, computeFitScore, detectApplyMethod, alreadyApplied, normalizeCompany, htmlToText };
+  const api = { runScrape, magentaSearch, magentaDetail, parseJobCards, linkedinSearch, linkedinDetail, jobstreetSearch, glintsSearch, classifyEligibility, extractRequirements, extractDeadline, computeFitScore, detectApplyMethod, alreadyApplied, normalizeCompany, htmlToText };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ScraperLib = api;
 })(typeof window !== 'undefined' ? window : globalThis);
