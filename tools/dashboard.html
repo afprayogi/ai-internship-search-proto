@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Job Search Dashboard</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -110,7 +110,7 @@
     color: var(--text);
     font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
-    min-width: 900px;
+    min-width: 0;
     padding-bottom: 60px;
     transition: background-color 0.25s var(--ease), color 0.25s var(--ease);
   }
@@ -363,6 +363,80 @@
   .pagination button { padding: 7px 14px; box-shadow: none; }
   .pagination button[disabled] { opacity: 0.4; cursor: not-allowed; }
   .pagination .page-info { color: var(--text-muted); padding: 0 6px; }
+
+  /* ---------- chip / tag input ---------- */
+  .chip-input { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card-bg); padding: 10px; }
+  .chip-input .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .chip-input .chips:empty { display: none; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 4px 4px 4px 11px; border-radius: 999px;
+    background: var(--accent-light); color: var(--accent-text); font-size: 13px; font-weight: 600; line-height: 1.3;
+  }
+  .chip > span { overflow-wrap: anywhere; }
+  .chip .chip-x {
+    flex: none; width: 26px; height: 26px; min-height: 0; padding: 0; border-radius: 50%; border: none; box-shadow: none;
+    background: transparent; color: inherit; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .chip .chip-x:hover { background: color-mix(in srgb, var(--closed) 18%, transparent); color: var(--closed); transform: none; box-shadow: none; }
+  .chip-add { display: flex; gap: 8px; align-items: center; }
+  .chip-add input {
+    flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 9px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text);
+  }
+  .chip-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+  .chip-meta button { padding: 2px 8px; min-height: 0; font-size: 12px; box-shadow: none; border: none; background: transparent; color: var(--closed); }
+
+  /* ---------- phone layout ---------- */
+  @media (max-width: 760px) {
+    body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); padding-top: env(safe-area-inset-top); }
+    .wrap { padding: 14px 12px; }
+    header { gap: 10px; margin-bottom: 14px; }
+    header h1 { font-size: 19px; }
+    header h1 .logo-badge { width: 32px; height: 32px; font-size: 15px; border-radius: 10px; }
+    header .actions { width: 100%; }
+    header .actions button:not(.theme-toggle) { flex: 1 1 auto; }
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card { padding: 12px 14px; }
+    .stat-card .num { font-size: 24px; }
+    .charts { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .tab-bar { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn { white-space: nowrap; flex: none; padding: 12px 14px; }
+    .section-card, .table-card, .chart-card { padding: 14px; }
+    .section-head .actions { width: 100%; }
+    .section-head .actions button { flex: 1 1 45%; }
+    .table-toolbar input[type="text"] { min-width: 100%; }
+    .table-toolbar select { flex: 1 1 45%; min-width: 0; }
+    button, .btn { min-height: 40px; }
+    input[type="text"], input[type="number"], select, textarea { font-size: 16px !important; }
+    .expiry-bar { gap: 6px; }
+    .expiry-bar button { flex: 1 1 100%; }
+    .modal-backdrop { padding: 0; align-items: stretch; }
+    .modal, .modal.wide { max-width: none; min-height: 100vh; border-radius: 0; border: none; padding: 18px 14px calc(24px + env(safe-area-inset-bottom)); }
+    .modal-footer { position: sticky; bottom: 0; background: var(--card-bg); padding: 12px 0 4px; }
+    .modal-footer button { flex: 1; }
+    .group-card-head .g_name, #gp_name { min-width: 100%; }
+    .toast { bottom: calc(20px + env(safe-area-inset-bottom)); max-width: 92vw; text-align: center; }
+    .pagination button { min-height: 40px; }
+
+    /* tables -> stacked cards, one per row */
+    table, thead, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; }
+    tbody tr { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 10px; background: var(--card-bg); box-shadow: var(--shadow-xs); }
+    tbody tr:hover { background: var(--card-bg); }
+    tbody td { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 5px 0; border: none; text-align: right; }
+    tbody td::before { content: attr(data-label); flex: none; color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; text-align: left; padding-top: 2px; }
+    td[data-label="Title"], td[data-label="Role"] { order: -2; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; padding-bottom: 2px; }
+    td[data-label="Company"] { order: -1; font-weight: 600; }
+    td[data-label="Title"]::before, td[data-label="Role"]::before, td[data-label="Actions"]::before, td[data-label="Company"]::before { display: none; }
+    td[data-label="Company"] { justify-content: flex-start; text-align: left; color: var(--text-muted); padding-bottom: 8px; }
+    td[data-label="Actions"], td.row-actions { justify-content: flex-end; padding-top: 10px; }
+    td[data-label="Actions"] button { min-height: 38px; padding: 6px 14px; }
+    .notes-cell { max-width: none; white-space: normal; }
+    td[data-label="Portal"], td[data-label="Link"], td[data-label="Tier"] { display: block; text-align: right; }
+    td[data-label="Portal"]::before, td[data-label="Link"]::before, td[data-label="Tier"]::before { float: left; }
+  }
 </style>
 </head>
 <body>
@@ -410,7 +484,7 @@
           <button type="button" class="primary" id="gp_run">▶ Run tab ini</button>
           <button type="button" class="danger" id="gp_delete">🗑️</button>
         </div>
-        <textarea class="keyword-list" id="gp_keywords" placeholder="Satu keyword per baris, mis. Electrical Engineer Intern"></textarea>
+        <textarea class="keyword-list" id="gp_keywords"></textarea>
         <div class="actions" style="margin-top:8px"><button type="button" id="gp_save">💾 Simpan tab ini</button></div>
       </div>
       <div class="log-box" id="logBox"></div>
@@ -1016,6 +1090,7 @@
       "<th>Date</th><th>Company</th><th>Role</th><th>Sector</th><th>Channel</th>" +
       "<th>Status</th><th>Notes</th><th>Source</th><th>Actions</th>" +
       "</tr></thead><tbody>" + body + "</tbody></table>";
+    labelCells(wrap);
 
     wrap.querySelectorAll("[data-edit]").forEach(function (btn) {
       btn.addEventListener("click", function () { openModal(parseInt(btn.getAttribute("data-edit"), 10)); });
@@ -1486,6 +1561,7 @@
       '<table><thead><tr><th>Found</th><th>Portal</th><th>Title</th><th>Company</th>' +
       '<th>Location</th><th>Tier</th><th>Eligibility</th><th>Fit</th><th>Deadline</th><th>Salary</th><th>Link</th><th>Actions</th></tr></thead>' +
       "<tbody>" + body + "</tbody></table>";
+    labelCells(wrap);
 
     wrap.querySelectorAll("[data-track]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1558,6 +1634,86 @@
       loadScraped();
     }).catch(function () { toast("Could not reach the local server"); });
   });
+
+
+  // ---------- chip / tag inputs (keywords, locations, skills) ----------
+  // The original <textarea> stays in the DOM as a hidden data store and its .value is
+  // overridden, so existing code reading/writing "one item per line" keeps working untouched.
+  function chipify(id, placeholder) {
+    var ta = document.getElementById(id);
+    if (!ta || ta.__chips) return;
+    ta.__chips = true;
+    var items = [];
+    var box = document.createElement("div"); box.className = "chip-input";
+    var chipsEl = document.createElement("div"); chipsEl.className = "chips";
+    var row = document.createElement("div"); row.className = "chip-add";
+    var input = document.createElement("input");
+    input.type = "text"; input.placeholder = placeholder || "Ketik lalu Enter atau koma"; input.autocomplete = "off";
+    input.setAttribute("enterkeyhint", "done"); input.setAttribute("autocapitalize", "off"); input.setAttribute("spellcheck", "false");
+    var addBtn = document.createElement("button"); addBtn.type = "button"; addBtn.textContent = "＋ Tambah";
+    var meta = document.createElement("div"); meta.className = "chip-meta";
+    var count = document.createElement("span");
+    var clearBtn = document.createElement("button"); clearBtn.type = "button"; clearBtn.textContent = "Hapus semua";
+    meta.appendChild(count); meta.appendChild(clearBtn);
+    row.appendChild(input); row.appendChild(addBtn);
+    box.appendChild(chipsEl); box.appendChild(row); box.appendChild(meta);
+    ta.style.display = "none";
+    ta.parentNode.insertBefore(box, ta.nextSibling);
+
+    function render() {
+      chipsEl.innerHTML = "";
+      items.forEach(function (text, i) {
+        var chip = document.createElement("span"); chip.className = "chip";
+        var label = document.createElement("span"); label.textContent = text;
+        var x = document.createElement("button"); x.type = "button"; x.className = "chip-x";
+        x.setAttribute("aria-label", "Hapus " + text); x.textContent = "×";
+        x.addEventListener("click", function () { items.splice(i, 1); render(); });
+        chip.appendChild(label); chip.appendChild(x); chipsEl.appendChild(chip);
+      });
+      count.textContent = items.length + " item";
+      clearBtn.style.display = items.length ? "" : "none";
+    }
+    function add(text) {
+      String(text).split(/[\n,]+/).forEach(function (p) {
+        p = p.trim();
+        if (p && !items.some(function (x) { return x.toLowerCase() === p.toLowerCase(); })) items.push(p);
+      });
+      render();
+    }
+    function commit() { if (input.value.trim()) { add(input.value); input.value = ""; } }
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); commit(); }
+      else if (e.key === "Backspace" && !input.value && items.length) { items.pop(); render(); }
+    });
+    input.addEventListener("input", function () {
+      if (/[\n,]/.test(input.value)) {
+        var parts = input.value.split(/[\n,]/), last = parts.pop();
+        add(parts.join("\n")); input.value = last;
+      }
+    });
+    addBtn.addEventListener("click", function () { commit(); input.focus(); });
+    clearBtn.addEventListener("click", function () {
+      if (items.length && confirm("Hapus semua " + items.length + " item?")) { items = []; render(); }
+    });
+    Object.defineProperty(ta, "value", {
+      configurable: true,
+      get: function () { commit(); return items.join("\n"); },
+      set: function (v) { items = String(v || "").split("\n").map(function (s) { return s.trim(); }).filter(Boolean); input.value = ""; render(); },
+    });
+    render();
+  }
+  chipify("gp_keywords", "Tambah keyword, mis. Electrical Engineer Intern");
+  chipify("s_ideal_locations", "Tambah kota, mis. surabaya");
+  chipify("s_acceptable_locations", "Tambah kota, mis. jakarta");
+  chipify("s_profile_skills", "Tambah skill, mis. Python");
+
+  // Phone layout turns each table row into a card; the CSS needs each cell's column name.
+  function labelCells(wrap) {
+    var heads = [].map.call(wrap.querySelectorAll("thead th"), function (t) { return t.textContent.trim(); });
+    wrap.querySelectorAll("tbody tr").forEach(function (tr) {
+      [].forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", heads[i] || ""); });
+    });
+  }
 
   // ---------- settings modal (dipakai bareng semua tab scraper) ----------
   var settingsBackdrop = document.getElementById("settingsBackdrop");
