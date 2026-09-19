@@ -738,6 +738,12 @@
           <textarea id="s_profile_skills"></textarea>
           <p class="settings-help">Keyword overlap only, not real judgment of fit - a posting mentioning more of these scores higher. Tune this list if it over- or under-matches for you.</p>
         </div>
+        <div class="full">
+          <label>⏰ Jadwal otomatis</label>
+          <label class="switch-row"><input type="checkbox" id="s_sched_enabled"> Jalankan scraper otomatis sesuai jam</label>
+          <textarea id="s_sched_times"></textarea>
+          <p class="settings-help" id="schedHelp">Ketik jam format 24 jam (mis. 08:00) lalu Enter. Di PC/Docker jadwal berjalan selama server dashboard menyala.</p>
+        </div>
         <div class="full" id="autoBox" style="display:none">
           <label>🔔 Otomatis &amp; notifikasi</label>
           <label class="switch-row"><input type="checkbox" id="s_auto_enabled"> Cari otomatis saat aplikasi dibuka</label>
@@ -1777,6 +1783,7 @@
   chipify("gp_keywords", "Tambah keyword, mis. Electrical Engineer Intern");
   chipify("s_ideal_locations", "Tambah kota, mis. surabaya");
   chipify("s_acceptable_locations", "Tambah kota, mis. jakarta");
+  chipify("s_sched_times", "Tambah jam, mis. 08:00");
   chipify("s_profile_skills", "Tambah skill, mis. Python");
 
   // Phone layout turns each table row into a card; the CSS needs each cell's column name.
@@ -1801,6 +1808,10 @@
       document.getElementById("s_linkedin_pages").value = cfg.linkedinMaxPages || 1;
       document.getElementById("s_jobstreet_pages").value = cfg.jobstreetMaxPages || 2;
       document.getElementById("s_profile_skills").value = (cfg.profileSkills || []).join("\n");
+      var sc = cfg.schedule || {};
+      document.getElementById("s_sched_enabled").checked = !!sc.enabled;
+      document.getElementById("s_sched_times").value = (sc.times || []).join(String.fromCharCode(10));
+      if (window.__STANDALONE__) document.getElementById("schedHelp").textContent = "Format 24 jam (mis. 08:00). Di HP kamu dapat notifikasi pengingat tiap jam itu; ketuk notifikasinya dan pencarian langsung berjalan.";
       document.getElementById("autoBox").style.display = window.__STANDALONE__ ? "" : "none";
       document.getElementById("s_auto_enabled").checked = cfg.autoRunEnabled !== false;
       document.getElementById("s_auto_hours").value = String(cfg.autoRunHours || 12);
@@ -1820,6 +1831,10 @@
       linkedinMaxPages: parseInt(document.getElementById("s_linkedin_pages").value, 10) || 1,
       jobstreetMaxPages: parseInt(document.getElementById("s_jobstreet_pages").value, 10) || 2,
       profileSkills: linesToArray(document.getElementById("s_profile_skills").value),
+      schedule: {
+        enabled: document.getElementById("s_sched_enabled").checked,
+        times: linesToArray(document.getElementById("s_sched_times").value).map(function (t) { var m = /^([0-9]{1,2})[:.]([0-9]{2})$/.exec(t); return m && +m[1] < 24 && +m[2] < 60 ? ("0" + m[1]).slice(-2) + ":" + m[2] : null; }).filter(Boolean),
+      },
       autoRunEnabled: document.getElementById("s_auto_enabled").checked,
       autoRunHours: parseInt(document.getElementById("s_auto_hours").value, 10) || 12,
       notifyEnabled: document.getElementById("s_notify_enabled").checked,

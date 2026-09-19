@@ -77,18 +77,43 @@
       return p.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 2147483000, title: title, body: body }] });
     }).catch(function () {});
   }
+  // Daily reminders at the scheduled times (repeat even while the app is closed).
+  // Tapping one opens the app, and maybeAutoRun() then catches up the missed run.
+  function syncSchedule() {
+    var p = LN(); if (!p) return;
+    var sc = getConfig().schedule || {}, ids = [];
+    for (var i = 0; i < 12; i++) ids.push({ id: 9001 + i });
+    p.cancel({ notifications: ids }).catch(function () {}).then(function () {
+      if (!sc.enabled || !sc.times || !sc.times.length) return;
+      return p.schedule({ notifications: sc.times.slice(0, 12).map(function (t, i) {
+        var hm = t.split(':');
+        return { id: 9001 + i, title: 'Waktunya cek lowongan', body: 'Ketuk untuk menjalankan pencarian otomatis.', schedule: { on: { hour: +hm[0], minute: +hm[1] }, allowWhileIdle: true } };
+      }) });
+    }).catch(function () {});
+  }
+  function lastDue(sc) {
+    var now = new Date(), best = 0;
+    (sc.times || []).forEach(function (t) {
+      var hm = t.split(':'), d = new Date(now); d.setHours(+hm[0], +hm[1], 0, 0);
+      if (d > now) d.setDate(d.getDate() - 1);
+      if (+d > best) best = +d;
+    });
+    return best;
+  }
   function lastRunAt() { return Number(load('sa.lastRun', 0)) || 0; }
   function maybeAutoRun() {
     var c = getConfig();
-    if (c.autoRunEnabled === false || run.running) return;
+    if (run.running) return;
     if (!(c.keywordGroups || []).some(function (g) { return g.enabled !== false && (g.keywords || []).length; })) return;
-    if (Date.now() - lastRunAt() < (c.autoRunHours || 12) * 3600000) return;
+    var sc = c.schedule;
+    if (sc && sc.enabled && sc.times && sc.times.length) { if (lastRunAt() >= lastDue(sc)) return; }
+    else if (c.autoRunEnabled === false || Date.now() - lastRunAt() < (c.autoRunHours || 12) * 3600000) return;
     var btn = document.getElementById('runScraperBtn');
     if (btn && !btn.disabled) { btn.click(); }
   }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(maybeAutoRun, 1500); });
   window.addEventListener('load', function () {
-    setTimeout(function () { if (getConfig().notifyEnabled !== false) window.__askNotifyPermission(); maybeAutoRun(); }, 3000);
+    setTimeout(function () { if (getConfig().notifyEnabled !== false) window.__askNotifyPermission(); syncSchedule(); maybeAutoRun(); }, 3000);
   });
 
   // ---- fake /api routes ----------------------------------------------------
@@ -101,7 +126,7 @@
     var method = ((init && init.method) || 'GET').toUpperCase();
     if (path === '/api/scraped' && method === 'GET') return json(load(K.scraped, []));
     if (path === '/api/config' && method === 'GET') return json(getConfig());
-    if (path === '/api/config' && method === 'POST') { var c = bodyOf(init); if (!Array.isArray(c.keywordGroups)) return json({ error: 'keywordGroups array required' }, 400); store(K.config, c); return json(c); }
+    if (path === '/api/config' && method === 'POST') { var c = bodyOf(init); if (!Array.isArray(c.keywordGroups)) return json({ error: 'keywordGroups array required' }, 400); store(K.config, c); setTimeout(syncSchedule, 0); return json(c); }
     if (path === '/api/scraper/run' && method === 'POST') return json(startRun(bodyOf(init).group));
     if (path === '/api/scraper/state') return json({ running: run.running, exitCode: run.exitCode, startedAt: run.startedAt });
     if (path === '/api/tracker' && method === 'GET') return json(load(K.tracker, []));

@@ -170,6 +170,13 @@ A real installable Android app (Capacitor 6) in `mobile-app/`. It runs the **sam
 - Build: see [`mobile-app/README.md`](mobile-app/README.md) (needs JDK 17 + Android SDK). Install `mobile-app/android/app/build/outputs/apk/debug/app-debug.apk` on the phone (allow "install unknown apps").
 - The dashboard is also installable as a PWA when the PC server is running (it listens on the LAN, open `http://<PC-IP>:4870/` on the phone).
 
+### 4e. Scheduled runs (cron-like)
+
+⚙️ Search settings → **⏰ Jadwal otomatis**: switch it on and add times in 24h format (e.g. `08:00`, `19:00`). Stored as `schedule: {enabled, times[]}` in `scraper_config.json`.
+
+- **PC / Docker:** the dashboard server checks the clock every 20s and starts a full run at each time (once per minute, skipped if a run is already going). It works while the server is running, so use Docker/an always-on PC for unattended runs.
+- **Android app:** Android will not let this app search while closed, so at each time the app posts a repeating daily notification; tapping it opens the app, which immediately catches up any missed scheduled run. Opening the app at any time also catches up.
+
 ### 4d. Docker
 
 `Dockerfile` + `docker-compose.yml` run the dashboard server in a container (`docker compose up`, then open `http://localhost:4870/`), with `job_scraper/`, the tracker CSV, and `.env` mounted as volumes. *Note: written but not yet build-tested.*

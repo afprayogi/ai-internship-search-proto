@@ -186,6 +186,25 @@ function startScraperRun(group) {
 }
 
 // ---------------------------------------------------------------------------
+// Scheduler: every 20s compare local HH:MM with config.schedule.times and start
+// a full run once per matching minute. Only fires while this server is running.
+// ---------------------------------------------------------------------------
+let lastScheduleKey = '';
+setInterval(() => {
+  try {
+    const sc = loadConfig().schedule;
+    if (!sc || !sc.enabled || !Array.isArray(sc.times)) return;
+    const d = new Date();
+    const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    const key = d.toDateString() + ' ' + hm;
+    if (!sc.times.includes(hm) || key === lastScheduleKey) return;
+    lastScheduleKey = key;
+    const r = startScraperRun('');
+    console.log('[schedule] ' + hm + ' -> ' + (r.started ? 'run started' : 'skipped (already running)'));
+  } catch { /* config unreadable this tick - try again next */ }
+}, 20000);
+
+// ---------------------------------------------------------------------------
 // Config (search keywords/settings) - job_scraper/scraper_config.json,
 // created from DEFAULT_CONFIG the first time it's requested.
 // ---------------------------------------------------------------------------

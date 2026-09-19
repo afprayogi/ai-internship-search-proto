@@ -10,6 +10,8 @@
 // fresh setup starts with.
 
 export const DEFAULT_CONFIG = {
+  // Auto-run schedule (24h local time, HH:MM). Used by the dashboard server and the Android app.
+  schedule: { enabled: false, times: ['08:00', '19:00'] },
   // Named, independently-runnable groups of keywords - each shows as its own
   // card in the dashboard's Search settings panel, with its own "Run" button
   // and an enabled/disabled toggle. `enabled: false` groups are skipped by
