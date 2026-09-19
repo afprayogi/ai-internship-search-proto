@@ -174,7 +174,11 @@ A real installable Android app (Capacitor 6) in `mobile-app/`. It runs the **sam
 
 Every run also lists all postings on [magentaku.id](https://magentaku.id) (BUMN internships and jobs; the inventory is small, so it is listed whole and ranked by fit score rather than searched per keyword). On PC it goes through `curl` because MAGENTA's Cloudflare rejects Node/Bun's own fetch; in the Android app it uses the phone's HTTP stack, which is **untested** against that block. Turn it off with `"magentaEnabled": false` in `scraper_config.json`.
 
-MagangHub, Karirhub, MSIB and Ayo Magang Vokasi are not included: MagangHub's site no longer exposes listings anonymously (old API returns 410), and the others have no usable public endpoint.
+### 4g. MagangHub (Kemnaker national internship program)
+
+Searched per keyword on `maganghub.kemnaker.go.id/magang-nasional/lowongan?keyword=...` (18 postings per page, no login; the list is embedded in the server-rendered page). Each posting carries the education levels, study programs, quota, and task description. Note that this is the *Program Pemagangan Lulusan Perguruan Tinggi*, so many postings are aimed at graduates: check the Eligibility badge and the posting itself. Pages per keyword: `maganghubMaxPages` (default 1, max 3); disable with `"maganghubEnabled": false`. Applying still requires a SIAPkerja account on their site.
+
+Karirhub, MSIB, and Ayo Magang Vokasi are not included: no usable public endpoint was found.
 
 ### 4e. Scheduled runs (cron-like)
 

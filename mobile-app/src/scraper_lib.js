@@ -234,6 +234,58 @@
     } catch (e) { return ''; }
   }
 
+  // ---------------------------------------------------------------- MagangHub (Kemnaker) - vacancy list is embedded as JSON in the server-rendered page
+    function resolveMagangHubRefs(obj, t) {
+    // Long strings are sent as separate RSC rows ("$24" -> a "24:T<hexLen>,<text>" row).
+    (obj.data || []).forEach((v) => {
+      const m = /^\$([0-9a-f]+)$/i.exec(v.taskDescription || '');
+      if (!m) return;
+      const at = t.search(new RegExp('(^|\\n)' + m[1] + ':T[0-9a-f]+,'));
+      if (at < 0) { v.taskDescription = ''; return; }
+      const head = /:T([0-9a-f]+),/.exec(t.slice(at, at + 24));
+      let bytes = parseInt(head[1], 16), out = '';
+      const start = at + head.index + head[0].length;
+      for (let k = start; k < t.length && bytes > 0; k++) {
+        const cp = t.codePointAt(k); const ch = String.fromCodePoint(cp);
+        bytes -= cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+        out += ch; if (cp > 0xffff) k++;
+      }
+      v.taskDescription = out.trim();
+    });
+    return obj;
+  }
+  function extractMagangHubVacancies(html) {
+    const parts = [...html.matchAll(/self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g)].map((m) => { try { return JSON.parse(m[1]); } catch (e) { return ''; } });
+    const t = parts.join('');
+    const i = t.indexOf('"initialVacancies":');
+    if (i < 0) return null;
+    let d = 0, inStr = false, esc = false;
+    const s = t.indexOf('{', i);
+    for (let j = s; j < t.length; j++) {
+      const c = t[j];
+      if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; }
+      else if (c === '"') inStr = true;
+      else if (c === '{') d++;
+      else if (c === '}' && --d === 0) { try { return resolveMagangHubRefs(JSON.parse(t.slice(s, j + 1)), t); } catch (e) { return null; } }
+    }
+    return null;
+  }
+  const MH_LEVEL = { diploma: 'D3/D4', bachelor: 'S1', profession: 'Profesi', master: 'S2' };
+  async function magangHubSearch(query, page) {
+    try {
+      const res = await fetch('https://maganghub.kemnaker.go.id/magang-nasional/lowongan?keyword=' + encodeURIComponent(query) + '&page=' + page, { headers: { 'User-Agent': UA, 'Accept-Language': 'id-ID,id;q=0.9' } });
+      if (!res.ok) return { jobs: [], error: 'HTTP ' + res.status };
+      const data = extractMagangHubVacancies(await res.text());
+      if (!data || !Array.isArray(data.data)) return { jobs: [], error: 'data tidak ketemu' };
+      return { jobs: data.data.filter((v) => v.id).map((v) => ({
+        portal: 'maganghub', title: v.positionName || '', company: (v.organizer && v.organizer.name) || '', location: (v.city && v.city.name) || '',
+        date: v.publishedAt ? v.publishedAt.slice(0, 10) : '',
+        url: 'https://maganghub.kemnaker.go.id/magang-nasional/lowongan/' + slugify(v.positionName) + '-' + v.id,
+        description: 'Program Pemagangan Lulusan Perguruan Tinggi (MagangHub Kemnaker). Jenjang: ' + (v.educationLevels || []).map((l) => MH_LEVEL[l] || l).join(', ') + '. Program studi: ' + (v.studyPrograms || []).map((p) => p.name).join(', ') + '. Kuota: ' + (v.approvedQuantity || v.quantityNeeded || '-') + '. ' + (v.taskDescription || ''),
+        work_type: 'Internship', salary: '' })) };
+    } catch (e) { return { jobs: [], error: String(e.message || e) }; }
+  }
+
   async function glintsDetail(url) {
     try {
       const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*;q=0.8' } });
@@ -296,13 +348,13 @@
     return Math.min(100, Math.round((hits / 8) * 100));
   }
 
-  const FALLBACK = { jobstreet: 'Via JobStreet (klik Open)', glints: 'Via Glints (klik Open)', magenta: 'Via MAGENTA (klik Open, perlu akun)', linkedin: 'Via LinkedIn (klik Open, perlu login)' };
+  const FALLBACK = { jobstreet: 'Via JobStreet (klik Open)', glints: 'Via Glints (klik Open)', magenta: 'Via MAGENTA (klik Open, perlu akun)', maganghub: 'Via MagangHub (klik Open, perlu akun SIAPkerja)', linkedin: 'Via LinkedIn (klik Open, perlu login)' };
   function detectApplyMethod(text, portal) {
     const fb = FALLBACK[portal] || 'Via portal (klik Open)';
     if (!text) return fb;
     const form = text.match(/\b(?:docs\.google\.com\/forms\/[^\s)"'<>]+|forms\.gle\/[^\s)"'<>]+)/i);
     if (form) return 'Google Form: ' + form[0];
-    const ext = (text.match(/\bhttps?:\/\/[^\s)"'<>]+/gi) || []).find((u) => !/linkedin\.com|jobstreet\.com|glints\.com|magentaku\.id/i.test(u));
+    const ext = (text.match(/\bhttps?:\/\/[^\s)"'<>]+/gi) || []).find((u) => !/linkedin\.com|jobstreet\.com|glints\.com|magentaku\.id|kemnaker\.go\.id/i.test(u));
     if (ext) return 'Link lain di postingan: ' + ext;
     const em = text.match(/(?:kirim|send|apply|lamar|cv|resume|daftar)[^.\n]{0,60}?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i);
     return em ? 'Kirim CV via email: ' + em[1] : fb;
@@ -391,6 +443,24 @@
       await sleep(jitter(400, 400));
     }
 
+    if (cfg.maganghubEnabled !== false) {
+      for (const { q, group } of entries) {
+        log('MagangHub [' + group + ']: "' + q + '"');
+        const acc = [];
+        let err = '';
+        for (let p = 1; p <= Math.min(cfg.maganghubMaxPages || 1, 3); p++) {
+          const r = await magangHubSearch(q, p);
+          acc.push(...r.jobs); if (r.error) err = r.error;
+          if (r.jobs.length < 18) break;
+          await sleep(300);
+        }
+        acc.forEach((j) => { j.keyword_group = group; });
+        collected.push(...acc);
+        log('  -> ' + acc.length + ' hasil (' + newish(acc) + ' kemungkinan baru)' + (err ? ' [' + err + ']' : ''));
+        await sleep(jitter(400, 400));
+      }
+    }
+
     if (cfg.magentaEnabled !== false && entries.length) {
       var mg = entries[0].group;
       log('MAGENTA [' + mg + ']: semua lowongan BUMN');
@@ -437,7 +507,7 @@
     return { records, seenAdditions };
   }
 
-  const api = { runScrape, magentaSearch, magentaDetail, parseJobCards, linkedinSearch, linkedinDetail, jobstreetSearch, glintsSearch, classifyEligibility, extractRequirements, extractDeadline, computeFitScore, detectApplyMethod, alreadyApplied, normalizeCompany, htmlToText };
+  const api = { runScrape, magangHubSearch, magentaSearch, magentaDetail, parseJobCards, linkedinSearch, linkedinDetail, jobstreetSearch, glintsSearch, classifyEligibility, extractRequirements, extractDeadline, computeFitScore, detectApplyMethod, alreadyApplied, normalizeCompany, htmlToText };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ScraperLib = api;
 })(typeof window !== 'undefined' ? window : globalThis);

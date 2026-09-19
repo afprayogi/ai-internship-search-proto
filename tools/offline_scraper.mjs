@@ -412,6 +412,73 @@ async function fetchMagentaDetail(job) {
   } catch { return ''; }
 }
 
+// MagangHub (Kemnaker national internship program) - the lowongan page is server-rendered
+// Next.js and embeds its vacancy list as JSON in the RSC payload (self.__next_f), 18 per
+// page, filtered by ?keyword=. No login needed to read the public list.
+function resolveMagangHubRefs(obj, t) {
+  // Long strings are sent as separate RSC rows ("$24" -> a "24:T<hexLen>,<text>" row).
+  (obj.data || []).forEach((v) => {
+    const m = /^\$([0-9a-f]+)$/i.exec(v.taskDescription || '');
+    if (!m) return;
+    const at = t.search(new RegExp('(^|\\n)' + m[1] + ':T[0-9a-f]+,'));
+    if (at < 0) { v.taskDescription = ''; return; }
+    const head = /:T([0-9a-f]+),/.exec(t.slice(at, at + 24));
+    let bytes = parseInt(head[1], 16), out = '';
+    const start = at + head.index + head[0].length;
+    for (let k = start; k < t.length && bytes > 0; k++) {
+      const cp = t.codePointAt(k); const ch = String.fromCodePoint(cp);
+      bytes -= cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+      out += ch; if (cp > 0xffff) k++;
+    }
+    v.taskDescription = out.trim();
+  });
+  return obj;
+}
+function extractMagangHubVacancies(html) {
+  const parts = [...html.matchAll(/self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g)].map((m) => { try { return JSON.parse(m[1]); } catch { return ''; } });
+  const t = parts.join('');
+  const i = t.indexOf('"initialVacancies":');
+  if (i < 0) return null;
+  let d = 0, inStr = false, esc = false;
+  const s = t.indexOf('{', i);
+  for (let j = s; j < t.length; j++) {
+    const c = t[j];
+    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; }
+    else if (c === '"') inStr = true;
+    else if (c === '{') d++;
+    else if (c === '}' && --d === 0) { try { return resolveMagangHubRefs(JSON.parse(t.slice(s, j + 1)), t); } catch { return null; } }
+  }
+  return null;
+}
+const MAGANGHUB_LEVEL = { diploma: 'D3/D4', bachelor: 'S1', profession: 'Profesi', master: 'S2' };
+async function fetchMagangHubPage(query, page) {
+  const url = `https://maganghub.kemnaker.go.id/magang-nasional/lowongan?keyword=${encodeURIComponent(query)}&page=${page}`;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'id-ID,id;q=0.9' } });
+    if (!res.ok) { console.error(`  [error] maganghub "${query}": HTTP ${res.status}`); return []; }
+    const data = extractMagangHubVacancies(await res.text());
+    if (!data || !Array.isArray(data.data)) { console.error(`  [error] maganghub "${query}": data tidak ketemu (layout situs berubah?)`); return []; }
+    return data.data.filter((v) => v.id).map((v) => {
+      const levels = (v.educationLevels || []).map((l) => MAGANGHUB_LEVEL[l] || l).join(', ');
+      const prodi = (v.studyPrograms || []).map((p) => p.name).join(', ');
+      return {
+        portal: 'maganghub',
+        title: v.positionName || '',
+        company: (v.organizer && v.organizer.name) || '',
+        location: (v.city && v.city.name) || '',
+        date: v.publishedAt ? v.publishedAt.slice(0, 10) : '',
+        url: `https://maganghub.kemnaker.go.id/magang-nasional/lowongan/${slugify(v.positionName)}-${v.id}`,
+        description: `Program Pemagangan Lulusan Perguruan Tinggi (MagangHub Kemnaker). Jenjang: ${levels}. Program studi: ${prodi}. Kuota: ${v.approvedQuantity || v.quantityNeeded || '-'}. ${v.taskDescription || ''}`,
+        work_type: 'Internship',
+        salary: '',
+      };
+    });
+  } catch (err) {
+    console.error(`  [error] maganghub "${query}": ${String(err.message || err).split('\n')[0]}`);
+    return [];
+  }
+}
+
 async function fetchGlintsPage(query) {
   const url = `https://glints.com/id/opportunities/jobs/explore?keyword=${encodeURIComponent(query)}&country=ID`;
   let html;
@@ -825,6 +892,7 @@ const PORTAL_FALLBACK_METHOD = {
   jobstreet: 'Via JobStreet (klik Open)',
   glints: 'Via Glints (klik Open)',
   magenta: 'Via MAGENTA (klik Open, perlu akun)',
+  maganghub: 'Via MagangHub (klik Open, perlu akun SIAPkerja)',
   linkedin: 'Via LinkedIn (klik Open, perlu login)',
 };
 
@@ -834,7 +902,7 @@ function detectApplyMethod(text, portal) {
   const form = text.match(GOOGLE_FORM_PATTERN);
   if (form) return `Google Form: ${form[0]}`;
   const urls = text.match(GENERIC_URL_PATTERN) || [];
-  const external = urls.find((u) => !/linkedin\.com|jobstreet\.com|glints\.com|magentaku\.id/i.test(u));
+  const external = urls.find((u) => !/linkedin\.com|jobstreet\.com|glints\.com|magentaku\.id|kemnaker\.go\.id/i.test(u));
   if (external) return `Link lain di postingan: ${external}`;
   const email = text.match(EMAIL_NEAR_APPLY);
   if (email) return `Kirim CV via email: ${email[1]}`;
@@ -1142,6 +1210,23 @@ async function main() {
     const newish = jobs.filter((j) => !seen[j.url]).length;
     logQueryProgress(jobs.length, newish);
     await sleep(400 + Math.floor(Math.random() * 400)); // jeda sopan antar request
+  }
+
+  if (CONFIG.maganghubEnabled !== false) {
+    for (const { keyword: q, group } of KEYWORD_ENTRIES) {
+      console.log(`  MagangHub [${group}]: "${q}"`);
+      const jobs = [];
+      for (let p = 1; p <= Math.min(CONFIG.maganghubMaxPages || 1, 3); p++) {
+        const got = await fetchMagangHubPage(q, p);
+        jobs.push(...got);
+        if (got.length < 18) break;
+        await sleep(300);
+      }
+      jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
+      collected.push(...jobs);
+      logQueryProgress(jobs.length, jobs.filter((j) => !seen[j.url]).length);
+      await sleep(400 + Math.floor(Math.random() * 400));
+    }
   }
 
   if (CONFIG.magentaEnabled !== false && KEYWORD_ENTRIES.length) {
