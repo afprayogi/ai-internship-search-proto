@@ -1,0 +1,8 @@
+{
+  "appId": "id.afprayogi.jobsearch",
+  "appName": "Job Search",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}

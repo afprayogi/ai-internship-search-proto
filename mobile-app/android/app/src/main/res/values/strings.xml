@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Job Search</string>
+    <string name="title_activity_main">Job Search</string>
+    <string name="package_name">id.afprayogi.jobsearch</string>
+    <string name="custom_url_scheme">id.afprayogi.jobsearch</string>
+</resources>
