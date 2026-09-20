@@ -50,25 +50,46 @@
     return /\/api\/scraper\/stream/.test(url) ? new FakeEventSource(url) : new RealEventSource(url);
   };
 
+  function patchScraped(batch) {
+    var all = load(K.scraped, []), byUrl = {};
+    batch.forEach(function (r) { byUrl[r.url] = r; });
+    all.forEach(function (r) { if (byUrl[r.url]) Object.assign(r, JSON.parse(JSON.stringify(byUrl[r.url]))); });
+    store(K.scraped, all);
+  }
+  // Called by the UI when a record is opened before its background detail fetch reached it.
+  window.__enrichOne = function (rec) {
+    return window.ScraperLib.enrichRecord(rec, getConfig()).then(function (patch) {
+      patch._pending = ''; var merged = Object.assign({}, rec, patch); delete merged.__loading;
+      patchScraped([merged]); return merged;
+    });
+  };
+
   function startRun(group) {
     if (run.running) return { started: false, reason: 'already_running' };
     run = { running: true, exitCode: null, startedAt: new Date().toISOString(), log: [] };
     pushLog(group ? '[app] Menjalankan grup: ' + group : '[app] Menjalankan semua grup aktif');
     var seen = load(K.seen, {});
-    window.ScraperLib.runScrape({ config: getConfig(), group: group || '', seen: seen, tracker: load(K.tracker, []), log: pushLog })
-      .then(function (res) {
-        var scraped = load(K.scraped, []);
-        store(K.scraped, res.records.concat(scraped));
-        store(K.seen, Object.assign(seen, res.seenAdditions));
+    var finished = false;
+    function finish() { if (finished) return; finished = true; run.running = false; run.exitCode = 0; pushLog('[app] Selesai.'); emitDone(); }
+    window.ScraperLib.runScrape({
+      config: getConfig(), group: group || '', seen: seen, tracker: load(K.tracker, []), log: pushLog,
+      // results are stored + shown as soon as the search itself is done; details are filled in afterwards
+      onProvisional: function (records, seenAdditions) {
+        var copy = JSON.parse(JSON.stringify(records));
+        store(K.scraped, copy.concat(load(K.scraped, [])));
+        store(K.seen, Object.assign(seen, seenAdditions));
         store('sa.lastRun', Date.now());
-        var n = res.records.length;
+        var n = records.length;
         if (n && getConfig().notifyEnabled !== false) {
-          var top = res.records.slice(0, 3).map(function (x) { return x.title + ' - ' + x.company; }).join(String.fromCharCode(10));
-          notify(n + ' lowongan baru', top);
+          notify(n + ' lowongan baru', records.slice(0, 3).map(function (x) { return x.title + ' - ' + x.company; }).join(String.fromCharCode(10)));
         }
-      })
+        finish();
+      },
+      onUpdate: function (batch) { patchScraped(batch); window.dispatchEvent(new Event('sa:data')); },
+    })
+      .then(function () { window.dispatchEvent(new Event('sa:data')); })
       .catch(function (e) { pushLog('[error] ' + (e && e.message || e)); })
-      .then(function () { run.running = false; run.exitCode = 0; pushLog('[app] Selesai.'); emitDone(); });
+      .then(function () { finish(); });
     return { started: true };
   }
 
@@ -81,7 +102,9 @@
   function notify(title, body) {
     var p = LN(); if (!p) return;
     p.checkPermissions().then(function (r) {
-      if (r.display !== 'granted') return;
+      return r.display === 'granted' ? r : p.requestPermissions();
+    }).then(function (r) {
+      if (!r || r.display !== 'granted') return;
       return p.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 2147483000, title: title, body: body }] });
     }).catch(function () {});
   }
@@ -121,7 +144,16 @@
   }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(maybeAutoRun, 1500); });
   window.addEventListener('load', function () {
-    setTimeout(function () { if (getConfig().notifyEnabled !== false) window.__askNotifyPermission(); syncSchedule(); maybeAutoRun(); }, 3000);
+    setTimeout(function () { syncSchedule(); maybeAutoRun(); }, 3000);
+  });
+
+  // Android hardware Back: close the top layer (detail / sheet / modal), only leave the app when nothing is open.
+  window.addEventListener('load', function () {
+    var App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (!App || !native) return;
+    App.addListener('backButton', function () {
+      if (window.__hasLayers && window.__hasLayers()) history.back(); else App.exitApp();
+    });
   });
 
   // ---- fake /api routes ----------------------------------------------------

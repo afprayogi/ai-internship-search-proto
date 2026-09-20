@@ -400,6 +400,27 @@
   // ---------------------------------------------------------------- orchestration
   // opts: { config, group ('' = all enabled), seen{url:..}, tracker[], log(line), stopSignal() }
   // returns { records[] (same fields as offline_jobs_log.csv rows), seenAdditions{} }
+  // Full description + everything derived from it (requirements, eligibility, deadline, fit, apply method) for one stored record.
+  // Used for background enrichment right after a search, and again on demand when the user opens a record that is still pending.
+  async function enrichRecord(rec, cfg) {
+    let full = rec.description || '';
+    try {
+      if (rec.portal === 'linkedin') full = (await linkedinDetail(rec.url)) || full;
+      else if (rec.portal === 'jobstreet') full = (await jobstreetDetail(rec.url)) || full;
+      else if (rec.portal === 'glints') full = (await glintsDetail(rec.url)) || full;
+      else if (rec.portal === 'magenta') {
+        const m = /posting=(\d+)&lokasi=(\d+)/.exec(rec.url || '');
+        if (m) full = (await magentaDetail({ description: rec.description, _mid: m[1], _mkota: m[2] })) || full;
+      }
+    } catch (e) { /* keep what we have */ }
+    const dl = extractDeadline(full);
+    return {
+      description: full, requirements: extractRequirements(full), eligibility: classifyEligibility(rec.title + ' ' + full),
+      deadline: dl.raw, deadline_iso: dl.iso, fit_score: String(computeFitScore(rec.title + ' ' + full, cfg.profileSkills) ?? ''),
+      apply_method: detectApplyMethod(full, rec.portal),
+    };
+  }
+
   async function runScrape(opts) {
     const cfg = opts.config, log = opts.log || (() => {}), seen = opts.seen || {};
     const groups = (cfg.keywordGroups || []).filter((g) => (opts.group ? g.name === opts.group : g.enabled !== false));
@@ -485,39 +506,43 @@
       seenRun.add(j.url); fresh.push(j);
     }
 
-    if (fresh.length) log('Membaca detail ' + fresh.length + ' lowongan baru...');
-    let doneCount = 0;
-    await pool(fresh, 6, async (job) => {
-      let full = job.description || '';
-      if (job.portal === 'linkedin') { try { full = (await linkedinDetail(job.url)) || full; } catch (e) { /* keep teaser */ } }
-      else if (job.portal === 'jobstreet') full = (await jobstreetDetail(job.url)) || full;
-      else if (job.portal === 'glints') full = (await glintsDetail(job.url)) || full;
-      else if (job.portal === 'magenta') full = (await magentaDetail(job)) || full;
-      job.description = full;
-      job.requirements = extractRequirements(full);
-      job.eligibility = classifyEligibility(job.title + ' ' + full);
-      const dl = extractDeadline(full); job.deadline = dl.raw; job.deadline_iso = dl.iso;
-      job.fit_score = computeFitScore(job.title + ' ' + full, cfg.profileSkills);
-      job.apply_method = detectApplyMethod(full, job.portal);
-      doneCount++;
-      if (doneCount % 5 === 0 || doneCount === fresh.length) log('  … ' + doneCount + '/' + fresh.length + ' detail selesai');
-    });
-
+    // 1) Build the records from what the search already gave us and hand them over immediately: the user sees results
+    //    after the search (seconds), not after every detail page has been fetched (minutes on a phone).
     const today = new Date().toISOString().slice(0, 10);
     const records = consolidate(fresh).map((j) => ({
       found_date: today, portal: j.portal, source_type: 'job_listing', keyword_group: j.keyword_group || '',
       title: j.title, company: j.company, location: j.location, location_tier: locationTier(j.location, cfg.idealLocations, cfg.acceptableLocations),
       employment_type_hint: employmentTypeHint(j), salary: j.salary || '', posted_date: j.date || '', description: j.description || '',
-      requirements: j.requirements || '', eligibility: j.eligibility || '', deadline: j.deadline || '', deadline_iso: j.deadline_iso || '',
-      fit_score: j.fit_score == null ? '' : String(j.fit_score), apply_method: j.apply_method || '', url: j.url,
+      requirements: '', eligibility: classifyEligibility(j.title || ''), deadline: '', deadline_iso: '',
+      fit_score: String(computeFitScore(j.title || '', cfg.profileSkills) ?? ''), apply_method: '', url: j.url,
+      _pending: j.portal === 'maganghub' ? '' : '1',
     }));
     const seenAdditions = {};
     fresh.forEach((j) => { seenAdditions[j.url] = { title: j.title, company: j.company, first_seen: today }; });
-    log('✔ Selesai: ' + records.length + ' lowongan baru.');
+    // MagangHub already returned the full description, so it needs no extra request
+    for (const r of records) if (r.portal === 'maganghub') Object.assign(r, await enrichRecord(r, cfg));
+    log('✔ Pencarian selesai: ' + records.length + ' lowongan baru' + (fresh.length ? ' (detail dilengkapi di latar belakang)' : '') + '.');
+    if (opts.onProvisional) await opts.onProvisional(records, seenAdditions);
+
+    // 2) Fill in details in the background, 6 at a time, reporting every few records so the UI can refresh.
+    const pending = records.filter((r) => r._pending);
+    let doneCount = 0, batch = [];
+    await pool(pending, 6, async (rec) => {
+      Object.assign(rec, await enrichRecord(rec, cfg));
+      rec._pending = '';
+      batch.push(rec); doneCount++;
+      if (batch.length >= 10 || doneCount === pending.length) {
+        log('  … detail ' + doneCount + '/' + pending.length);
+        if (opts.onUpdate) opts.onUpdate(batch);
+        batch = [];
+      }
+    });
+    if (batch.length && opts.onUpdate) opts.onUpdate(batch);
+    if (pending.length) log('✔ Semua detail sudah lengkap.');
     return { records, seenAdditions };
   }
 
-  const api = { runScrape, magangHubSearch, magentaSearch, magentaDetail, parseJobCards, linkedinSearch, linkedinDetail, jobstreetSearch, glintsSearch, classifyEligibility, extractRequirements, extractDeadline, computeFitScore, detectApplyMethod, alreadyApplied, normalizeCompany, htmlToText };
+  const api = { runScrape, enrichRecord, magangHubSearch, magentaSearch, magentaDetail, parseJobCards, linkedinSearch, linkedinDetail, jobstreetSearch, glintsSearch, classifyEligibility, extractRequirements, extractDeadline, computeFitScore, detectApplyMethod, alreadyApplied, normalizeCompany, htmlToText };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ScraperLib = api;
 })(typeof window !== 'undefined' ? window : globalThis);

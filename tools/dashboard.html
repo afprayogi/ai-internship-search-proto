@@ -249,7 +249,7 @@
     display: none; align-items: flex-start; justify-content: center; padding: 40px 16px;
     overflow-y: auto; z-index: 50;
   }
-  .modal-backdrop.open { display: flex; animation: fadeIn 0.18s var(--ease); }
+  .modal-backdrop.open { z-index: 210; display: flex; animation: fadeIn 0.18s var(--ease); }
   .modal {
     background: var(--card-bg); border-radius: var(--radius-lg); width: 100%; max-width: 640px;
     box-shadow: var(--shadow-lg); padding: 26px; border: 1px solid var(--border);
@@ -620,6 +620,7 @@
   .coach-ring { position: relative; z-index: 250; outline: 3px solid #818cf8; outline-offset: 3px; border-radius: 14px; animation: coachPulse 1.4s ease-in-out infinite; }
   @keyframes coachPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(129,140,248,.55); } 50% { box-shadow: 0 0 0 10px rgba(129,140,248,0); } }
   @media (min-width: 761px) { #coach { left: auto; right: 24px; bottom: 24px; width: 360px; } #coach.coach-top { top: auto; bottom: 24px; } }
+  .d-pending { margin-bottom: 14px; padding: 10px 12px; border-radius: 12px; background: var(--accent-light); color: var(--accent-text); font-size: 13px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -1785,6 +1786,7 @@
       var applied = findAppliedEntry(r.company, r.title);
       var tags = '<span class="tag">' + escapeHtml(PORTAL_NAME[r.portal] || r.portal || "") + "</span>";
       if (et) tags += '<span class="tag ' + et[0] + '">' + et[1] + "</span>";
+      if (r._pending) tags += '<span class="tag">⏳ melengkapi</span>';
       if (r.fit_score !== "" && r.fit_score != null) tags += '<span class="tag ' + (Number(r.fit_score) >= 50 ? "tag-ok" : "") + '">⭐ ' + Number(r.fit_score) + "</span>";
       if (r.deadline) tags += '<span class="tag ' + (deadlineClass(r)) + '">⏰ ' + escapeHtml(r.deadline) + "</span>";
       if (r.salary) tags += '<span class="tag">💰 ' + escapeHtml(r.salary) + "</span>";
@@ -2259,7 +2261,7 @@
     var desc = String(r.description || "").trim();
     if (desc.length > 3500) desc = desc.slice(0, 3500) + "…";
     return '<div class="d-bar"><button type="button" class="pill-btn" id="detailBack">‹ Kembali</button></div>' +
-      '<div class="d-body"><div class="d-head">' + avatarHtml(r.company) + "<div><h2>" + escapeHtml(r.title || "—") + "</h2><div class=\"job-company\">" + escapeHtml(r.company || "—") + "</div></div></div>" +
+      '<div class="d-body">' + (r._pending ? '<div class="d-pending">⏳ Melengkapi syarat, deadline, dan kelayakan…</div>' : "") + '<div class="d-head">' + avatarHtml(r.company) + "<div><h2>" + escapeHtml(r.title || "—") + "</h2><div class=\"job-company\">" + escapeHtml(r.company || "—") + "</div></div></div>" +
       '<div class="d-grid">' +
       row("Lokasi", escapeHtml(r.location || "") + (dist != null ? " (~" + Math.round(dist) + " km)" : "")) +
       row("Jarak", escapeHtml(r.location_tier || "")) +
@@ -2283,14 +2285,26 @@
     var box = document.getElementById("jobDetail");
     if (!r) { closeJobDetail(); return; }
     selectedJobUrl = r.url || "";
-    box.innerHTML = detailHtml(r);
-    box.scrollTop = 0;
+    var html = detailHtml(r);
+    if (quiet && box.__sig === html) return;
+    box.__sig = html;
+    box.innerHTML = html;
+    if (!quiet || !box.__url || box.__url !== r.url) box.scrollTop = 0;
+    box.__url = r.url;
+    if (r._pending && window.__enrichOne && !r.__loading) {
+      r.__loading = true;
+      window.__enrichOne(r).then(function (m) {
+        Object.assign(r, m); r.__loading = false;
+        if (selectedJobUrl === r.url) showJobDetail(r, true);
+        renderScrapedTable();
+      }).catch(function () { r.__loading = false; });
+    }
     [].forEach.call(document.querySelectorAll(".job-card"), function (c) {
       var row = (window.__jobRows || [])[parseInt(c.getAttribute("data-i"), 10)];
       c.classList.toggle("selected", !!row && row.url === selectedJobUrl);
     });
     if (!quiet) document.body.classList.add("detail-open");
-    document.getElementById("detailBack").addEventListener("click", closeJobDetail);
+    document.getElementById("detailBack").addEventListener("click", function () { closeJobDetail(); });
     var tb = document.getElementById("detailTrack");
     if (tb) tb.addEventListener("click", function () { startTrack(r); });
   }
@@ -2300,6 +2314,38 @@
     if (!window.matchMedia("(min-width: 900px)").matches) selectedJobUrl = "";
     if (!box.innerHTML) box.innerHTML = '<div class="d-empty">Pilih lowongan untuk melihat detail.</div>';
   }
+
+  window.addEventListener("sa:data", function () { if (typeof loadScraped === "function") loadScraped(); });
+
+  // Android hardware Back: close the top-most layer (detail, sheet, modal) instead of leaving the app.
+  (function backLayers() {
+    var layers = [], ignore = 0;
+    window.__hasLayers = function () { return layers.length > 0; };
+    function push(entry) { layers.push(entry); try { history.pushState({ jl: layers.length }, ""); } catch (e) { /* ignore */ } }
+    function removed(entry) {
+      var i = layers.indexOf(entry); if (i < 0) return;
+      var wasTop = i === layers.length - 1;
+      layers.splice(i, 1);
+      if (wasTop) { ignore++; try { history.back(); } catch (e) { ignore--; } }
+    }
+    window.addEventListener("popstate", function () {
+      if (ignore) { ignore--; return; }
+      var entry = layers.pop();
+      if (entry) entry.close();
+    });
+    function watch(el, isOpen, close) {
+      var entry = null;
+      new MutationObserver(function () {
+        var open = isOpen();
+        if (open && !entry) { entry = { close: function () { var e = entry; entry = null; close(); } }; push(entry); }
+        else if (!open && entry) { var e2 = entry; entry = null; removed(e2); }
+      }).observe(el, { attributes: true, attributeFilter: ["class"] });
+    }
+    [].forEach.call(document.querySelectorAll(".sheet-backdrop, .modal-backdrop"), function (bd) {
+      watch(bd, function () { return bd.classList.contains("open"); }, function () { bd.classList.remove("open"); document.body.classList.remove("sheet-open"); });
+    });
+    watch(document.body, function () { return document.body.classList.contains("detail-open"); }, function () { document.body.classList.remove("detail-open"); });
+  })();
 
   (function feedWiring() {
     function sheet(idBackdrop, openBtn, closeBtn) {
@@ -2313,6 +2359,12 @@
     sheet("filterBackdrop", "filterBtn", "filterClose");
     var closeScraper = sheet("scraperBackdrop", "scraperEditBtn", "scraperClose");
     document.getElementById("gp_run").addEventListener("click", closeScraper);
+
+    // after the add/edit dialog closes, refresh cards + detail so "Sudah dilamar" shows right away
+    [].forEach.call(document.querySelectorAll(".modal-backdrop"), function (bd) {
+      new MutationObserver(function () { if (!bd.classList.contains("open")) setTimeout(function () { try { renderScrapedTable(); } catch (e) { /* ignore */ } }, 60); })
+        .observe(bd, { attributes: true, attributeFilter: ["class"] });
+    });
 
     // app menu
     var menu = document.getElementById("appMenu"), mb = document.getElementById("menuBtn");

@@ -21,7 +21,9 @@
 // Dedup state:    job_scraper/offline_seen.json (separate from Claude's own seen_jobs.json
 //                  on purpose, so this script never touches /scrape's state)
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const execFileAsync = promisify(execFile);
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -56,6 +58,10 @@ const ui = {
   query(portal, group, keyword) {
     if (portal !== uiPortal) { uiPortal = portal; console.log('\n' + paint(1, `▶ ${portal}`)); }
     console.log(`  • ${keyword}` + (group ? paint(2, `  [${group}]`) : ''));
+  },
+  line(portal, group, keyword, total, fresh) {
+    const tail = total === 0 ? paint(2, 'belum ada hasil') : `${total} hasil` + (fresh ? paint(32, `, ${fresh} baru`) : paint(2, ', belum ada yang baru'));
+    console.log(`  ${total === 0 ? paint(2, '·') : paint(32, '✔')} ${paint(1, portal)} · ${keyword}${group ? paint(2, `  [${group}]`) : ''}  →  ${tail}`);
   },
   result(total, fresh) {
     console.log(total === 0
@@ -161,9 +167,20 @@ function execBun(args) {
   }
 }
 
-function runCli(cliPath, args, label) {
+async function execBunAsync(args) {
   try {
-    const out = execBun(['run', cliPath, 'search', ...args, '--format', 'json']);
+    return (await execFileAsync('bun', args, { encoding: 'utf-8', timeout: 30000, maxBuffer: 20 * 1024 * 1024 })).stdout;
+  } catch (err) {
+    if (err.code === 'ENOENT' && existsSync(BUN_FALLBACK)) {
+      return (await execFileAsync(BUN_FALLBACK, args, { encoding: 'utf-8', timeout: 30000, maxBuffer: 20 * 1024 * 1024 })).stdout;
+    }
+    throw err;
+  }
+}
+
+async function runCli(cliPath, args, label) {
+  try {
+    const out = await execBunAsync(['run', cliPath, 'search', ...args, '--format', 'json']);
     return JSON.parse(out);
   } catch (err) {
     const stderr = String(err.stderr || err.message || err);
@@ -181,9 +198,9 @@ function runCli(cliPath, args, label) {
 // has title/company/location/date, no requirements text. Only called for
 // genuinely new postings (not on every search result) to keep request
 // volume low, per LinkedIn's ToS concerns already noted above.
-function runCliDetail(cliPath, id, label) {
+async function runCliDetail(cliPath, id, label) {
   try {
-    const out = execBun(['run', cliPath, 'detail', id, '--format', 'json']);
+    const out = await execBunAsync(['run', cliPath, 'detail', id, '--format', 'json']);
     return JSON.parse(out);
   } catch (err) {
     const stderr = String(err.stderr || err.message || err);
@@ -414,16 +431,16 @@ function parseMagentaCards(html) {
 // fingerprint) with 403 but accepts curl, so this portal shells out to curl.
 const MAGENTA_JAR = path.join(ROOT, 'job_scraper', '.magenta_cookies.txt');
 let magentaToken = null;
-function magentaCurl(args) {
-  return execFileSync('curl', ['-s', '-S', '--max-time', '25', '-A', USER_AGENT, '-b', MAGENTA_JAR, '-c', MAGENTA_JAR, ...args], { encoding: 'utf-8', maxBuffer: 20 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+async function magentaCurl(args) {
+  return (await execFileAsync('curl', ['-s', '-S', '--max-time', '25', '-A', USER_AGENT, '-b', MAGENTA_JAR, '-c', MAGENTA_JAR, ...args], { encoding: 'utf-8', maxBuffer: 20 * 1024 * 1024 })).stdout;
 }
-function magentaOpen() {
-  const html = magentaCurl(['https://magentaku.id/lowongan']);
+async function magentaOpen() {
+  const html = await magentaCurl(['https://magentaku.id/lowongan']);
   magentaToken = (html.match(/csrf-token" content="([^"]*)/) || [])[1];
   if (!magentaToken) throw new Error('token tidak ketemu (diblokir Cloudflare atau curl tidak ada)');
 }
 async function magentaPost(pathname, body) {
-  if (!magentaToken) magentaOpen();
+  if (!magentaToken) await magentaOpen();
   return magentaCurl(['-X', 'POST', 'https://magentaku.id' + pathname, '-H', 'X-CSRF-TOKEN: ' + magentaToken, '-H', 'X-Requested-With: XMLHttpRequest', '-H', 'Accept: application/json', '-d', new URLSearchParams(body).toString()]);
 }
 async function fetchMagentaJobs() {
@@ -525,6 +542,7 @@ async function fetchMagangHubPage(query, page) {
   }
 }
 
+let glintsBlockedCount = 0;
 async function fetchGlintsPage(query) {
   const url = `https://glints.com/id/opportunities/jobs/explore?keyword=${encodeURIComponent(query)}&country=ID`;
   let html;
@@ -539,6 +557,7 @@ async function fetchGlintsPage(query) {
     });
     html = await res.text();
     if (!res.ok) {
+      if (res.status === 403 || res.status === 429) glintsBlockedCount++;
       ui.fail(`glints "${query}": HTTP ${res.status}`);
       return [];
     }
@@ -1208,83 +1227,85 @@ async function main() {
 
   const collected = [];
 
-  for (const { keyword: q, group } of KEYWORD_ENTRIES) {
-    ui.query('LinkedIn', group, q);
+  // All portals search at the same time (each keeps its own polite pacing); inside a portal, keywords run 2 at a time.
+  // Sequential searching was the reason a 30-keyword run took minutes.
+  async function pool(items, n, fn) {
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        try { await fn(items[i], i); } catch (e) { ui.fail(String((e && e.message) || e).split('\n')[0]); }
+      }
+    }));
+  }
+  const portalTasks = [];
+
+  portalTasks.push(() => pool(KEYWORD_ENTRIES, 2, async ({ keyword: q, group }) => {
+    let total = 0, newish = 0;
     for (let page = 1; page <= LINKEDIN_MAX_PAGES; page++) {
-      const data = runCli(LINKEDIN_CLI, ['-q', q, '-l', 'Indonesia', '--jobage', '14', '--limit', '20', '--page', String(page)], `linkedin "${q}" p${page}`);
-      const before = collected.length;
-      let newish = 0;
+      const data = await runCli(LINKEDIN_CLI, ['-q', q, '-l', 'Indonesia', '--jobage', '14', '--limit', '20', '--page', String(page)], `linkedin "${q}" p${page}`);
       for (const job of data.results || []) {
         if (!job.url) continue;
         collected.push({ portal: 'linkedin', keyword: q, keyword_group: group, title: job.title, company: job.company, location: job.location, date: job.date, url: job.url, description: '' });
+        total++;
         if (!seen[job.url]) newish++;
       }
-      logQueryProgress(collected.length - before, newish);
     }
-  }
+    ui.line('LinkedIn', group, q, total, newish);
+  }));
 
-  let consecutiveBlocks = 0;
-  let jobstreetGaveUp = false;
-  for (const { keyword: q, group } of KEYWORD_ENTRIES) {
-    if (jobstreetGaveUp) break;
-    ui.query('JobStreet', group, q);
-    for (let page = 1; page <= JOBSTREET_MAX_PAGES; page++) {
-      const { jobs, blocked } = await fetchJobStreetPage(q, page);
-      jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
-      collected.push(...jobs);
-      if (!blocked) {
-        const newish = jobs.filter((j) => !seen[j.url]).length;
-        logQueryProgress(jobs.length, newish);
+  portalTasks.push(async () => {
+    let consecutiveBlocks = 0, gaveUp = false;
+    await pool(KEYWORD_ENTRIES, 1, async ({ keyword: q, group }) => {
+      let total = 0, newish = 0;
+      for (let page = 1; page <= JOBSTREET_MAX_PAGES && !gaveUp; page++) {
+        const { jobs, blocked } = await fetchJobStreetPage(q, page);
+        jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
+        collected.push(...jobs);
+        total += jobs.length; newish += jobs.filter((j) => !seen[j.url]).length;
+        if (blocked && ++consecutiveBlocks >= 2) {
+          ui.warn('JobStreet: kena verifikasi Cloudflare 2x berturut-turut, dilewati untuk run ini (LinkedIn dll tetap jalan). Coba lagi beberapa jam lagi.');
+          gaveUp = true;
+        } else if (!blocked) consecutiveBlocks = 0;
+        await sleep(200 + Math.floor(Math.random() * 200));
       }
-      if (blocked) {
-        consecutiveBlocks++;
-        if (consecutiveBlocks >= 2) {
-          ui.warn('JobStreet: Kena Cloudflare challenge 2x berturut-turut - berhenti nyoba JobStreet buat run ini. LinkedIn tetap lanjut. Coba lagi beberapa jam lagi.');
-          jobstreetGaveUp = true;
-          break;
-        }
-      } else {
-        consecutiveBlocks = 0;
-      }
-      await sleep(400 + Math.floor(Math.random() * 400)); // jeda sopan antar request
-    }
-  }
+      if (!gaveUp) ui.line('JobStreet', group, q, total, newish);
+    });
+  });
 
-  for (const { keyword: q, group } of KEYWORD_ENTRIES) {
-    ui.query('Glints', group, q);
+  portalTasks.push(() => pool(KEYWORD_ENTRIES, 2, async ({ keyword: q, group }) => {
+    if (glintsBlockedCount >= 2) return; // Glints answered 403/429 twice already - stop hammering it
     const jobs = await fetchGlintsPage(q);
     jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
     collected.push(...jobs);
-    const newish = jobs.filter((j) => !seen[j.url]).length;
-    logQueryProgress(jobs.length, newish);
-    await sleep(400 + Math.floor(Math.random() * 400)); // jeda sopan antar request
-  }
+    ui.line('Glints', group, q, jobs.length, jobs.filter((j) => !seen[j.url]).length);
+  }));
 
   if (CONFIG.maganghubEnabled !== false) {
-    for (const { keyword: q, group } of KEYWORD_ENTRIES) {
-      ui.query('MagangHub', group, q);
+    portalTasks.push(() => pool(KEYWORD_ENTRIES, 2, async ({ keyword: q, group }) => {
       const jobs = [];
       for (let p = 1; p <= Math.min(CONFIG.maganghubMaxPages || 1, 3); p++) {
         const got = await fetchMagangHubPage(q, p);
         jobs.push(...got);
         if (got.length < 18) break;
-        await sleep(300);
       }
       jobs.forEach((j) => { j.keyword = q; j.keyword_group = group; });
       collected.push(...jobs);
-      logQueryProgress(jobs.length, jobs.filter((j) => !seen[j.url]).length);
-      await sleep(400 + Math.floor(Math.random() * 400));
-    }
+      ui.line('MagangHub', group, q, jobs.length, jobs.filter((j) => !seen[j.url]).length);
+    }));
   }
 
   if (CONFIG.magentaEnabled !== false && KEYWORD_ENTRIES.length) {
-    const mg = KEYWORD_ENTRIES[0].group;
-    ui.query('MAGENTA (BUMN)', mg, 'semua lowongan');
-    const jobs = await fetchMagentaJobs();
-    jobs.forEach((j) => { j.keyword = 'MAGENTA'; j.keyword_group = mg; });
-    collected.push(...jobs);
-    logQueryProgress(jobs.length, jobs.filter((j) => !seen[j.url]).length);
+    portalTasks.push(async () => {
+      const mg = KEYWORD_ENTRIES[0].group;
+      const jobs = await fetchMagentaJobs();
+      jobs.forEach((j) => { j.keyword = 'MAGENTA'; j.keyword_group = mg; });
+      collected.push(...jobs);
+      ui.line('MAGENTA (BUMN)', mg, 'semua lowongan', jobs.length, jobs.filter((j) => !seen[j.url]).length);
+    });
   }
+  ui.head(`Mencari di ${portalTasks.length} portal sekaligus...`);
+  await Promise.all(portalTasks.map((t) => t()));
 
   const feedCookie = process.env.LINKEDIN_LI_AT_COOKIE;
   if (feedCookie) {
@@ -1349,7 +1370,8 @@ async function main() {
   if (dedupedThisRun.length) {
     ui.head(`Membaca detail ${dedupedThisRun.length} lowongan baru (syarat, deadline, kelayakan)...`);
   }
-  for (const [jobIdx, job] of dedupedThisRun.entries()) {
+  let detailDone = 0;
+  await pool(dedupedThisRun, 5, async (job) => {
     if (!job.source_type) job.source_type = 'job_listing';
     let fullText = job.description || '';
     if (job.source_type === 'feed_post') {
@@ -1358,21 +1380,20 @@ async function main() {
       // read, unlike the other portals where search and detail are separate
       // steps). Nothing more to do here.
     } else if (job.portal === 'linkedin') {
-      const detail = runCliDetail(LINKEDIN_CLI, job.url, `${job.company} - ${job.title}`);
+      const detail = await runCliDetail(LINKEDIN_CLI, job.url, `${job.company} - ${job.title}`);
       if (detail && detail.description) fullText = detail.description;
-      await sleep(500 + Math.floor(Math.random() * 500));
+      await sleep(100 + Math.floor(Math.random() * 150));
     } else if (job.portal === 'jobstreet') {
       const full = await fetchJobStreetDetail(job.url);
       if (full) fullText = full;
-      await sleep(400 + Math.floor(Math.random() * 400));
+      await sleep(100 + Math.floor(Math.random() * 150));
     } else if (job.portal === 'glints') {
       const full = await fetchGlintsDetail(job.url);
       if (full) fullText = full;
-      await sleep(400 + Math.floor(Math.random() * 400));
+      await sleep(100 + Math.floor(Math.random() * 150));
     } else if (job.portal === 'magenta') {
       const full = await fetchMagentaDetail(job);
       if (full) fullText = full;
-      await sleep(300 + Math.floor(Math.random() * 300));
     }
     job.description = fullText;
     job.requirements = extractRequirements(fullText);
@@ -1386,8 +1407,8 @@ async function main() {
       : job.eligibility === 'graduate_required' ? 'perlu lulusan'
       : job.eligibility === 'unclear' ? 'sinyal campuran' : '';
     const bits = [elig, job.fit_score == null ? '' : `cocok ${job.fit_score}`, job.deadline ? `deadline ${job.deadline}` : ''].filter(Boolean);
-    console.log(paint(2, `  [${jobIdx + 1}/${dedupedThisRun.length}] `) + `${job.title} - ${job.company}` + (bits.length ? paint(2, `  (${bits.join(' - ')})`) : ''));
-  }
+    console.log(paint(2, `  [${++detailDone}/${dedupedThisRun.length}] `) + `${job.title} - ${job.company}` + (bits.length ? paint(2, `  (${bits.join(' - ')})`) : ''));
+  });
 
   const consolidated = consolidateMassPostings(dedupedThisRun);
 

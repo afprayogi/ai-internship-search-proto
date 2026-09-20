@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@capacitor/android": "^6.2.2",
+    "@capacitor/app": "^6.0.3",
     "@capacitor/cli": "^6.2.2",
     "@capacitor/core": "^6.2.2",
     "@capacitor/local-notifications": "^6.1.3"
