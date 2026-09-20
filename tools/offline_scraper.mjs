@@ -1057,6 +1057,35 @@ function beepIfNew(count) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Relevance filter. Broad portals (MAGENTA lists everything, MagangHub answers a keyword with
+// loose matches like "Fisioterapi" for "electrical") get a second check; every portal honours
+// the user's exclusion words. Tokens come from the active keywords, the profile skills, and
+// the user's study programs (MagangHub lists the study programs each posting accepts).
+// ---------------------------------------------------------------------------
+const RELEVANCE_STOP = new Set(['intern', 'internship', 'magang', 'fresh', 'graduate', 'junior', 'senior', 'entry', 'level', 'staff', 'trainee', 'and', 'dan', 'the', 'for', 'untuk', 'program', 'officer', 'assistant', 'specialist', 'engineer', 'engineering', 'manager', 'with', 'dengan', 'of', 'di']);
+function relevanceTokens(keywords, skills) {
+  const out = new Set();
+  [...(keywords || []), ...(skills || [])].forEach((k) => String(k).toLowerCase().split(/[^a-z0-9+#.]+/).forEach((t) => { if (t.length >= 3 && !RELEVANCE_STOP.has(t)) out.add(t); }));
+  return [...out];
+}
+function makeRelevanceFilter(cfg, entries) {
+  const tokens = relevanceTokens(entries.map((e) => e.keyword || e.q), cfg.profileSkills);
+  const majors = (cfg.majors || []).map((m) => String(m).toLowerCase().trim()).filter(Boolean);
+  const exclude = (cfg.excludeKeywords || []).map((m) => String(m).toLowerCase().trim()).filter(Boolean);
+  const broad = new Set(['magenta', 'maganghub']);
+  return function keep(job) {
+    const head = ((job.title || '') + ' ' + (job.company || '')).toLowerCase();
+    if (exclude.some((x) => head.includes(x))) return { ok: false, why: 'kata dikecualikan' };
+    if (cfg.broadPortalFilter === false || !broad.has(job.portal)) return { ok: true };
+    const text = (head + ' ' + String(job.description || '').slice(0, 1500)).toLowerCase();
+    if (majors.some((m) => text.includes(m))) return { ok: true };
+    if (!tokens.length && !majors.length) return { ok: true };
+    const words = new Set(text.split(/[^a-z0-9+#.]+/));
+    return tokens.some((t) => words.has(t) || (t.length >= 5 && text.includes(t))) ? { ok: true } : { ok: false, why: 'tidak relevan' };
+  };
+}
+
 // Live progress feedback so the process is visible while it runs, not just a
 // silent pause followed by a final total at the end.
 function logQueryProgress(total, newCount) {
@@ -1348,11 +1377,15 @@ async function main() {
   }
 
   // Dedup against this script's own memory + skip anything already applied to.
+  const keepRelevant = makeRelevanceFilter(CONFIG, KEYWORD_ENTRIES);
+  let filteredOut = 0;
   const fresh = collected.filter((job) => {
     if (!job.url || seen[job.url]) return false;
     if (alreadyApplied(trackerLines, job.company, job.title)) return false;
+    if (!keepRelevant(job).ok) { filteredOut++; seen[job.url] = { title: job.title, company: job.company, first_seen: new Date().toISOString().slice(0, 10) }; return false; }
     return true;
   });
+  if (filteredOut) ui.note(`${filteredOut} lowongan disaring (tidak relevan atau mengandung kata yang kamu kecualikan).`);
 
   // Dedup within this run too (same job can surface from overlapping keywords).
   const dedupedThisRun = [];

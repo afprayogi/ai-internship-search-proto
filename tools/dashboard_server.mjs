@@ -313,6 +313,16 @@ function clearAllScrapedPostings() {
   return { removed: records.length, remaining: 0 };
 }
 
+function deleteScrapedPostings({ urls, group }) {
+  if (!existsSync(SCRAPED_LOG_PATH)) return { removed: 0, remaining: 0 };
+  const records = csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS);
+  const urlSet = new Set(Array.isArray(urls) ? urls : []);
+  const kept = records.filter((r) => !(urlSet.has(r.url) || (group && r.keyword_group === group)));
+  writeFileSync(SCRAPED_LOG_PATH, recordsToCsv(kept, SCRAPED_FIELDS), 'utf-8');
+  // deliberately NOT removed from the seen-list: a posting you deleted should not come back on the next run
+  return { removed: records.length - kept.length, remaining: kept.length };
+}
+
 function cleanupExpiredPostings(maxAgeDays) {
   if (!existsSync(SCRAPED_LOG_PATH)) return { removed: 0, remaining: 0 };
   const records = csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS);
@@ -396,6 +406,10 @@ const server = Bun.serve({
 
     if (url.pathname === '/api/scraped/clear' && req.method === 'POST') {
       return json(clearAllScrapedPostings());
+    }
+    if (url.pathname === '/api/scraped/delete' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      return json(deleteScrapedPostings({ urls: body.urls, group: typeof body.group === 'string' ? body.group : '' }));
     }
     if (url.pathname === '/api/scraped/cleanup' && req.method === 'POST') {
       const body = await req.json().catch(() => ({}));

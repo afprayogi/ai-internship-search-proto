@@ -421,6 +421,35 @@
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // Relevance filter. Broad portals (MAGENTA lists everything, MagangHub answers a keyword with
+  // loose matches like "Fisioterapi" for "electrical") get a second check; every portal honours
+  // the user's exclusion words. Tokens come from the active keywords, the profile skills, and
+  // the user's study programs (MagangHub lists the study programs each posting accepts).
+  // ---------------------------------------------------------------------------
+  const RELEVANCE_STOP = new Set(['intern', 'internship', 'magang', 'fresh', 'graduate', 'junior', 'senior', 'entry', 'level', 'staff', 'trainee', 'and', 'dan', 'the', 'for', 'untuk', 'program', 'officer', 'assistant', 'specialist', 'engineer', 'engineering', 'manager', 'with', 'dengan', 'of', 'di']);
+  function relevanceTokens(keywords, skills) {
+    const out = new Set();
+    [...(keywords || []), ...(skills || [])].forEach((k) => String(k).toLowerCase().split(/[^a-z0-9+#.]+/).forEach((t) => { if (t.length >= 3 && !RELEVANCE_STOP.has(t)) out.add(t); }));
+    return [...out];
+  }
+  function makeRelevanceFilter(cfg, entries) {
+    const tokens = relevanceTokens(entries.map((e) => e.keyword || e.q), cfg.profileSkills);
+    const majors = (cfg.majors || []).map((m) => String(m).toLowerCase().trim()).filter(Boolean);
+    const exclude = (cfg.excludeKeywords || []).map((m) => String(m).toLowerCase().trim()).filter(Boolean);
+    const broad = new Set(['magenta', 'maganghub']);
+    return function keep(job) {
+      const head = ((job.title || '') + ' ' + (job.company || '')).toLowerCase();
+      if (exclude.some((x) => head.includes(x))) return { ok: false, why: 'kata dikecualikan' };
+      if (cfg.broadPortalFilter === false || !broad.has(job.portal)) return { ok: true };
+      const text = (head + ' ' + String(job.description || '').slice(0, 1500)).toLowerCase();
+      if (majors.some((m) => text.includes(m))) return { ok: true };
+      if (!tokens.length && !majors.length) return { ok: true };
+      const words = new Set(text.split(/[^a-z0-9+#.]+/));
+      return tokens.some((t) => words.has(t) || (t.length >= 5 && text.includes(t))) ? { ok: true } : { ok: false, why: 'tidak relevan' };
+    };
+  }
+
   async function runScrape(opts) {
     const cfg = opts.config, log = opts.log || (() => {}), seen = opts.seen || {};
     const groups = (cfg.keywordGroups || []).filter((g) => (opts.group ? g.name === opts.group : g.enabled !== false));
@@ -498,13 +527,22 @@
       log('  • MAGENTA: semua lowongan'); said(mr.jobs, mr.error);
     });
     log('Mencari di ' + portalTasks.length + ' portal sekaligus...');
-    await Promise.all(portalTasks.map((t) => t().catch((e) => log('  ✖ ' + (e.message || e)))));
+    // JobStreet (2nd task) is the flaky one: give it at most 8s after everything else is done, so a blocked portal never holds up the results.
+    const runTask = (t) => t().catch((e) => log('  ✖ ' + (e.message || e)));
+    const jsPromise = runTask(portalTasks[1]);
+    await Promise.all(portalTasks.filter((_, i) => i !== 1).map(runTask));
+    await Promise.race([jsPromise, sleep(8000)]);
 
     const fresh = [], seenRun = new Set();
+    const keepRelevant = makeRelevanceFilter(cfg, entries);
+    let filteredOut = 0;
+    const filteredSeen = {};
     for (const j of collected) {
       if (!j.url || seen[j.url] || seenRun.has(j.url) || alreadyApplied(opts.tracker, j.company, j.title)) continue;
+      if (!keepRelevant(j).ok) { filteredOut++; filteredSeen[j.url] = { title: j.title, company: j.company, first_seen: new Date().toISOString().slice(0, 10) }; continue; }
       seenRun.add(j.url); fresh.push(j);
     }
+    if (filteredOut) log('ℹ ' + filteredOut + ' lowongan disaring (tidak relevan atau mengandung kata yang kamu kecualikan).');
 
     // 1) Build the records from what the search already gave us and hand them over immediately: the user sees results
     //    after the search (seconds), not after every detail page has been fetched (minutes on a phone).
@@ -518,6 +556,7 @@
       _pending: j.portal === 'maganghub' ? '' : '1',
     }));
     const seenAdditions = {};
+    Object.assign(seenAdditions, filteredSeen);
     fresh.forEach((j) => { seenAdditions[j.url] = { title: j.title, company: j.company, first_seen: today }; });
     // MagangHub already returned the full description, so it needs no extra request
     for (const r of records) if (r.portal === 'maganghub') Object.assign(r, await enrichRecord(r, cfg));

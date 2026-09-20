@@ -8,8 +8,54 @@
   window.__STANDALONE__ = true;
 
   var K = { config: 'sa.config', scraped: 'sa.scraped', seen: 'sa.seen', tracker: 'jobSearchTracker.v1' };
-  function load(key, fallback) { try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
-  function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { pushLog('[warn] penyimpanan HP penuh / gagal nyimpen'); } }
+  // Big collections live in IndexedDB (localStorage caps out around 5 MB, which a few thousand postings would exceed);
+  // small things (config, tracker, flags) stay in localStorage. Reads are served from memory once `ready` resolves.
+  var BIG = { 'sa.scraped': 1, 'sa.seen': 1 };
+  var cache = {}, idb = null, dirty = {}, flushTimer = null;
+  var ready = new Promise(function (resolve) {
+    function finishLoad() { Object.keys(BIG).forEach(function (k) { if (cache[k] === undefined) { try { var v = localStorage.getItem(k); if (v) { cache[k] = JSON.parse(v); dirty[k] = 1; } } catch (e) { /* ignore */ } } }); flush(); resolve(); }
+    try {
+      var req = indexedDB.open('jobsearch', 2);
+      req.onupgradeneeded = function () { if (!req.result.objectStoreNames.contains('kv')) req.result.createObjectStore('kv'); };
+      req.onerror = function () { idb = null; finishLoad(); };
+      req.onsuccess = function () {
+        idb = req.result;
+        var keys = Object.keys(BIG), left = keys.length, st = idb.transaction('kv').objectStore('kv');
+        keys.forEach(function (k) {
+          var g = st.get(k);
+          g.onsuccess = function () { if (g.result !== undefined) cache[k] = g.result; if (--left === 0) finishLoad(); };
+          g.onerror = function () { if (--left === 0) finishLoad(); };
+        });
+      };
+    } catch (e) { finishLoad(); }
+  });
+  function flush() {
+    clearTimeout(flushTimer); flushTimer = null;
+    var keys = Object.keys(dirty); if (!keys.length) return;
+    dirty = {};
+    if (!idb) { keys.forEach(function (k) { try { localStorage.setItem(k, JSON.stringify(cache[k])); } catch (e) { pushLog('[warn] penyimpanan penuh'); } }); return; }
+    var tx = idb.transaction('kv', 'readwrite'), st = tx.objectStore('kv');
+    keys.forEach(function (k) { st.put(cache[k], k); });
+    tx.oncomplete = function () { keys.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }); };
+    tx.onerror = function () { pushLog('[warn] gagal menyimpan data'); };
+  }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); });
+  window.addEventListener('pagehide', flush);
+  function load(key, fallback) {
+    if (BIG[key]) return cache[key] !== undefined ? cache[key] : fallback;
+    try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+  }
+  function store(key, val) {
+    if (BIG[key]) { cache[key] = val; dirty[key] = 1; if (!flushTimer) flushTimer = setTimeout(flush, 250); return; }
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { pushLog('[warn] penyimpanan HP penuh / gagal nyimpen'); }
+  }
+  window.__resetAll = function () {
+    try { if (idb) idb.close(); } catch (e) { /* ignore */ }
+    try { localStorage.clear(); } catch (e) { /* ignore */ }
+    var del = indexedDB.deleteDatabase('jobsearch');
+    del.onsuccess = del.onerror = del.onblocked = function () { location.reload(); };
+    setTimeout(function () { location.reload(); }, 1500);
+  };
   function getConfig() {
     var c = load(K.config, null);
     if (!c || c.__v !== 2) {
@@ -172,6 +218,13 @@
     if (path === '/api/tracker' && method === 'GET') return json(load(K.tracker, []));
     if (path === '/api/tracker' && method === 'POST') { var t = bodyOf(init); return json({ ok: true, rows: Array.isArray(t) ? t.length : 0 }); }
     if (path === '/api/scraped/clear' && method === 'POST') { var n = load(K.scraped, []).length; store(K.scraped, []); store(K.seen, {}); return json({ removed: n, remaining: 0 }); }
+    if (path === '/api/scraped/delete' && method === 'POST') {
+      var db = bodyOf(init), urlSet = {}, before = load(K.scraped, []);
+      (db.urls || []).forEach(function (u) { urlSet[u] = 1; });
+      var keptRows = before.filter(function (r) { return !(urlSet[r.url] || (db.group && r.keyword_group === db.group)); });
+      store(K.scraped, keptRows); // stays in the seen-list on purpose, so a deleted posting does not come back
+      return json({ removed: before.length - keptRows.length, remaining: keptRows.length });
+    }
     if (path === '/api/scraped/cleanup' && method === 'POST') {
       var days = Number(bodyOf(init).maxAgeDays);
       if (!isFinite(days) || days < 0) return json({ error: 'maxAgeDays must be a non-negative number' }, 400);
@@ -187,7 +240,7 @@
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
     var url = typeof input === 'string' ? input : (input && input.url) || '';
-    return url.indexOf('/api/') === 0 ? route(url, init) : realFetch(input, init);
+    return url.indexOf('/api/') === 0 ? ready.then(function () { return route(url, init); }) : realFetch(input, init);
   };
 
   window.addEventListener('load', function () {
