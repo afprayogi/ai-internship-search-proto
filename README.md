@@ -37,6 +37,8 @@
 - **Notifikasi:** pengingat harian dan pemberitahuan lowongan baru di HP; WhatsApp di PC.
 - **Pelacak lamaran:** status, statistik, import/export CSV.
 - **Ramah pengguna baru:** aplikasi mulai kosong dengan tutorial interaktif 5 langkah (bergerak sendiri saat kamu selesai mengerjakan tiap langkah), input keyword berupa tag, mode gelap/terang. Buka lagi dari menu ⋯ → Panduan penggunaan.
+- **Mudah dibersihkan:** hapus lowongan satu per satu (dengan Urungkan), pilih banyak lalu hapus, hapus tab (beserta atau tanpa lowongannya), dan hapus semua data untuk mulai ulang.
+- **Hasil lebih bersih:** kata yang dikecualikan dan pencocokan jurusan menyaring lowongan tidak relevan dari MAGENTA/MagangHub. Data besar disimpan di IndexedDB, bukan localStorage.
 - **Cepat:** semua portal dicari bersamaan dan detail dibaca paralel, jadi pencarian di HP jauh lebih singkat.
 - **Output CLI yang jelas:** banner, progres per portal, `[3/34]` saat membaca detail, ringkasan akhir, dan pesan error berbahasa Indonesia dengan saran.
 
@@ -103,6 +105,7 @@ Semua di `job_scraper/scraper_config.json`, diedit lewat **⚙️ Setelan** di d
   "keywordGroups": [{ "name": "Magang", "enabled": true, "keywords": ["Electrical Engineer Intern"] }],
   "idealLocations": ["surabaya"], "acceptableLocations": ["jakarta"],
   "schedule": { "enabled": true, "times": ["08:00", "19:00"] },
+  "majors": ["Teknik Elektro"], "excludeKeywords": ["sales", "fisioterapi"], "broadPortalFilter": true,
   "maganghubEnabled": true, "magentaEnabled": true
 }
 ```
