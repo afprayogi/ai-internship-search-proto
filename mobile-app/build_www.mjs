@@ -16,4 +16,8 @@ html = html.replace('<style>', inject);
 fs.writeFileSync(path.join(www, 'index.html'), html);
 fs.writeFileSync(path.join(www, 'defaults.js'), 'window.__DEFAULT_CONFIG__ = ' + JSON.stringify(DEFAULT_CONFIG) + ';\n');
 for (const f of ['scraper_lib.js', 'standalone.js']) fs.copyFileSync(path.join(here, 'src', f), path.join(www, f));
+// background runner bundle: scraper + glue in one file (the runner has no module system)
+fs.mkdirSync(path.join(www, 'runners'), { recursive: true });
+fs.writeFileSync(path.join(www, 'runners', 'runner.js'),
+  fs.readFileSync(path.join(here, 'src', 'scraper_lib.js'), 'utf-8') + String.fromCharCode(10) + fs.readFileSync(path.join(here, 'src', 'runner_glue.js'), 'utf-8'));
 console.log('www/ built: index.html + defaults.js + scraper_lib.js + standalone.js');

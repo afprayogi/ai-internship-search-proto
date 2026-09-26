@@ -648,6 +648,159 @@
   .undo-toast button { min-height: 0; padding: 7px 14px; border-radius: 999px; border: none; background: #818cf8; color: #10123a; font-weight: 700; }
   body.select-mode .track-btn, body.select-mode .del-btn { display: none; }
   @media (min-width: 761px) { .undo-toast { bottom: 28px; } }
+
+  /* =====================================================================
+     v3 design: brand gradient, home hero, radar, motion, gestures
+     ===================================================================== */
+  :root { --brand1: #6366f1; --brand2: #8b5cf6; --brand3: #ec4899; --ease-spring: cubic-bezier(.34, 1.56, .64, 1); --ease-out: cubic-bezier(.22, 1, .36, 1); }
+  body { font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .has-ripple { overflow: hidden; }
+  .ripple { position: absolute; border-radius: 50%; pointer-events: none; background: currentColor; opacity: .18; transform: scale(0); animation: ripple .65s var(--ease-out) forwards; }
+  @keyframes ripple { to { transform: scale(1); opacity: 0; } }
+  button { transition: transform .18s var(--ease-spring), box-shadow .2s, background .2s, border-color .2s; }
+  button:active:not(:disabled) { transform: scale(.95); }
+
+  /* panel + list entrances */
+  .tab-panel:not([hidden]) { animation: panelIn .42s var(--ease-out); }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+  .swipe.enter, .mini-card, .dl-row, .portal-chip, .stat-tile { animation: rise .5s var(--ease-out) backwards; animation-delay: calc(min(var(--i, 0), 12) * 45ms); }
+  .stat-tile:nth-child(1) { --i: 0; } .stat-tile:nth-child(2) { --i: 1; } .stat-tile:nth-child(3) { --i: 2; } .stat-tile:nth-child(4) { --i: 3; }
+
+  /* app bar */
+  header.appbar { position: sticky; top: 0; z-index: 60; margin: 0 -20px 10px; padding: 12px 20px; background: color-mix(in srgb, var(--bg) 94%, transparent); }
+  .brand .logo-badge { background: linear-gradient(135deg, var(--brand1), var(--brand2) 55%, var(--brand3)); box-shadow: 0 6px 18px rgba(139, 92, 246, .45); animation: floaty 4s ease-in-out infinite; }
+  @keyframes floaty { 50% { transform: translateY(-3px) rotate(-4deg); } }
+  #runScraperBtn { background: linear-gradient(135deg, var(--brand1), var(--brand2)); border: none; color: #fff; box-shadow: 0 8px 20px rgba(99, 102, 241, .4); }
+  #runScraperBtn:disabled { animation: blink 1.2s ease-in-out infinite; }
+
+  /* hero */
+  .hero { position: relative; overflow: hidden; margin-bottom: 14px; padding: 26px 22px 22px; border-radius: 28px; color: #fff;
+    background: linear-gradient(125deg, var(--brand1), var(--brand2) 50%, var(--brand3));
+    box-shadow: 0 22px 50px rgba(124, 58, 237, .35); }
+    .hero > * { position: relative; z-index: 1; }
+  .hero-blob { position: absolute !important; z-index: 0 !important; border-radius: 50%; opacity: .28; background: #fff; animation: drift 9s ease-in-out infinite; will-change: transform; }
+  .hero-blob.b1 { width: 180px; height: 180px; right: -50px; top: -60px; }
+  .hero-blob.b2 { width: 90px; height: 90px; right: 90px; bottom: -30px; animation-delay: -3s; opacity: .18; }
+  .hero-blob.b3 { width: 60px; height: 60px; left: -20px; bottom: 30px; animation-delay: -6s; opacity: .16; }
+  @keyframes drift { 50% { transform: translate(-16px, 14px) scale(1.1); } }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; opacity: .92; }
+  .hero-title { margin: 10px 0 6px; font-size: clamp(24px, 6vw, 34px); line-height: 1.15; letter-spacing: -.02em; color: #fff; }
+  .hero-sub { margin: 0 0 18px; font-size: 14.5px; opacity: .92; line-height: 1.5; }
+  .hero-cta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-hero { display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; border: none; border-radius: 999px; background: #fff; color: #5b21b6; font-weight: 800; font-size: 15px; box-shadow: 0 10px 26px rgba(0, 0, 0, .22); }
+  .btn-hero .ico { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg, var(--brand1), var(--brand3)); color: #fff; font-size: 11px; padding-left: 2px; animation: nudge 2.4s ease-in-out infinite; }
+  @keyframes nudge { 50% { transform: translateX(3px); } }
+  .btn-ghost { padding: 14px 18px; border: 1.5px solid rgba(255, 255, 255, .55); border-radius: 999px; background: rgba(255, 255, 255, .14); color: #fff; font-weight: 700; }
+  .hero-cta[hidden], .radar[hidden] { display: none; }
+
+  /* radar */
+  .radar { display: grid; grid-template-columns: 84px 1fr; gap: 14px 16px; align-items: center; padding: 14px; border-radius: 20px; background: rgba(255, 255, 255, .18); animation: rise .4s var(--ease-out); }
+  .radar-scope { position: relative; width: 84px; height: 84px; border-radius: 50%; background: rgba(0, 0, 0, .22); overflow: hidden; }
+  .radar-scope i { position: absolute; inset: 0; margin: auto; border: 1px solid rgba(255, 255, 255, .35); border-radius: 50%; }
+  .radar-scope i:nth-child(1) { width: 28px; height: 28px; } .radar-scope i:nth-child(2) { width: 54px; height: 54px; } .radar-scope i:nth-child(3) { width: 80px; height: 80px; }
+  .radar-scope b { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, rgba(255, 255, 255, .85), rgba(255, 255, 255, 0) 30%); animation: sweep 1.6s linear infinite; }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  .radar-title { font-weight: 800; font-size: 16px; } .radar-count { font-size: 13px; opacity: .92; margin: 2px 0 8px; } .radar-count span { font-weight: 800; font-size: 18px; }
+  .radar-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .25); overflow: hidden; }
+  .radar-bar div { height: 100%; width: 10%; border-radius: 4px; background: #fff; transition: width .6s var(--ease-out); box-shadow: 0 0 12px rgba(255, 255, 255, .8); }
+  .radar-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .rchip { padding: 5px 11px; border-radius: 999px; background: rgba(255, 255, 255, .16); font-size: 12px; font-weight: 700; transition: background .3s, transform .3s var(--ease-spring); }
+  .rchip.run { animation: blink 1s ease-in-out infinite; } .rchip.ok { background: rgba(16, 185, 129, .85); transform: scale(1.04); } .rchip.warn { background: rgba(245, 158, 11, .85); }
+  @keyframes blink { 50% { opacity: .5; } }
+
+  /* stats */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .stat-tile { padding: 14px 12px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--border); box-shadow: var(--shadow-xs); text-align: center; position: relative; overflow: hidden; }
+  .stat-tile::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--c1), var(--c2)); }
+  .stat-tile.s1 { --c1: #6366f1; --c2: #8b5cf6; } .stat-tile.s2 { --c1: #ec4899; --c2: #f59e0b; } .stat-tile.s3 { --c1: #10b981; --c2: #38bdf8; } .stat-tile.s4 { --c1: #f59e0b; --c2: #ef4444; }
+  .stat-tile .num { font-size: 26px; font-weight: 800; letter-spacing: -.02em; } .stat-tile .lbl { margin-top: 2px; font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+
+  /* quick start */
+  .quickstart { margin-bottom: 18px; padding: 18px; border-radius: 22px; border: 2px dashed color-mix(in srgb, var(--brand2) 55%, transparent); background: color-mix(in srgb, var(--brand2) 8%, var(--card-bg)); animation: rise .5s var(--ease-out); }
+  .quickstart[hidden], .home-sec[hidden] { display: none; }
+  .quickstart h3 { margin: 0 0 4px; font-size: 18px; } .quickstart p { margin: 0 0 12px; color: var(--text-muted); font-size: 14px; }
+  .suggest { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sugg { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-weight: 600; font-size: 13px; min-height: 0; box-shadow: none; }
+  .sugg:hover { border-color: var(--brand2); transform: translateY(-2px); } .sugg.picked { background: var(--brand2); border-color: var(--brand2); color: #fff; transform: scale(.96); }
+  .sheet-suggest .f-label { width: 100%; }
+
+  /* sections */
+  .home-sec { margin-bottom: 20px; }
+  .sec-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; } .sec-head h3 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+  .carousel { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 12px; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -4px; }
+  .carousel::-webkit-scrollbar { display: none; }
+  .mini-card { position: relative; flex: 0 0 210px; scroll-snap-align: start; padding: 16px; border-radius: 22px; background: var(--card-bg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer; transition: transform .25s var(--ease-spring), box-shadow .25s; }
+  .mini-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(99, 102, 241, .18); }
+  .mini-title { margin-top: 12px; font-weight: 800; font-size: 14.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mini-co { margin-top: 3px; font-size: 12.5px; color: var(--text-muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; } .mini-loc { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fit-ring { --p: 0; position: relative; flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--brand2) calc(var(--p) * 1%), color-mix(in srgb, var(--text-muted) 20%, transparent) 0); }
+  .fit-ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--card-bg); } .fit-ring b { position: relative; font-size: 12px; }
+  .deadline-list { display: flex; flex-direction: column; gap: 8px; }
+  .dl-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; }
+  .dl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; } .dl-main b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dl-main span { font-size: 12px; color: var(--text-muted); }
+  .dl-chip { padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; background: color-mix(in srgb, #f59e0b 22%, transparent); color: #b45309; } .dl-chip.hot { background: color-mix(in srgb, #ef4444 20%, transparent); color: #dc2626; animation: blink 1.3s ease-in-out infinite; }
+  .portal-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+  .portal-chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; background: var(--card-bg); border: 1px solid var(--border); font-size: 13px; } .portal-chip span:last-child { color: var(--text-muted); font-weight: 700; }
+  .pdot { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--text-muted) 40%, transparent); } .pdot.on { background: #10b981; box-shadow: 0 0 0 4px rgba(16, 185, 129, .2); }
+
+  /* job feed polish + swipe */
+  .swipe { position: relative; margin-bottom: 12px; border-radius: 22px; }
+  .swipe .job-card { margin: 0; position: relative; z-index: 1; border-radius: 22px; transition: transform .28s var(--ease-out), opacity .22s, border-color .15s, box-shadow .2s; }
+  .swipe-bg { position: absolute; inset: 0; border-radius: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-weight: 800; color: #fff; opacity: calc(var(--pull, 0)); background: linear-gradient(90deg, #10b981, #ef4444 100%); }
+  .swipe[data-dir="r"] .swipe-bg { background: #10b981; } .swipe[data-dir="l"] .swipe-bg { background: #ef4444; }
+  .swipe-bg span { transition: transform .2s var(--ease-spring); } .swipe[data-dir="r"] .swipe-bg .r, .swipe[data-dir="l"] .swipe-bg .l { opacity: 0; } .swipe[data-dir="r"] .swipe-bg .l { transform: scale(1.2); } .swipe[data-dir="l"] .swipe-bg .r { transform: scale(1.2); }
+  .job-card:hover { transform: translateY(-2px); }
+  .job-card .avatar { border-radius: 16px; box-shadow: 0 6px 14px rgba(0, 0, 0, .12); }
+  .tag-ok { animation: none; }
+  .top-progress { position: fixed; z-index: 500; left: 0; right: 0; top: 0; height: 3px; opacity: 0; transition: opacity .3s; overflow: hidden; }
+  .top-progress::after { content: ""; display: block; height: 100%; width: 40%; background: linear-gradient(90deg, transparent, var(--brand2), var(--brand3), transparent); }
+  body.busy .top-progress { opacity: 1; }
+  body.busy .top-progress::after { animation: slideBar 1.1s linear infinite; }
+  @keyframes slideBar { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+
+  /* skeleton */
+  .skeleton { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px; margin-bottom: 12px; border-radius: 22px; border: 1px solid var(--border); background: var(--card-bg); }
+  .skeleton i, .skeleton b { display: block; border-radius: 10px; background: linear-gradient(90deg, color-mix(in srgb, var(--text-muted) 12%, transparent) 25%, color-mix(in srgb, var(--text-muted) 24%, transparent) 50%, color-mix(in srgb, var(--text-muted) 12%, transparent) 75%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+  .skeleton i { width: 44px; height: 44px; border-radius: 14px; } .skeleton b { height: 12px; margin: 6px 0; } .skeleton b:nth-child(2) { width: 60%; } .skeleton b:nth-child(3) { width: 35%; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* empty state + confetti */
+  .empty-ico { display: inline-block; animation: floaty 3s ease-in-out infinite; }
+  .confetti { position: fixed; z-index: 900; width: 9px; height: 14px; border-radius: 2px; pointer-events: none; animation: burst 1.2s var(--ease-out) forwards; }
+  @keyframes burst { to { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; } }
+
+  /* sheets, dialogs, detail: springy */
+  .sheet { animation: sheetUp .4s var(--ease-spring); } .sheet-backdrop.open { animation: fade .25s; } .dlg { animation: pop .35s var(--ease-spring); }
+  @keyframes sheetUp { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } } @keyframes fade { from { opacity: 0; } } @keyframes pop { from { transform: scale(.88); opacity: 0; } }
+  body.detail-open .job-detail { animation: sheetUp .38s var(--ease-out); }
+  .job-detail { animation: rise .35s var(--ease-out); }
+  .undo-toast.show, .toast.show { animation: pop .3s var(--ease-spring); }
+
+  /* bottom nav: floating glass pill */
+  @media (max-width: 760px) {
+    header.appbar { margin: 0 -12px 8px; padding: 10px 12px; }
+    .bottom-nav { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); border-radius: 26px; border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+      background: color-mix(in srgb, var(--card-bg) 82%, transparent); backdrop-filter: blur(18px) saturate(1.5); box-shadow: 0 16px 40px rgba(20, 20, 60, .28); padding: 6px; }
+    .bottom-nav button { position: relative; border-radius: 20px; font-size: 10.5px; }
+    .bottom-nav button.active { background: linear-gradient(135deg, color-mix(in srgb, var(--brand1) 18%, transparent), color-mix(in srgb, var(--brand3) 12%, transparent)); color: var(--brand2); }
+    .bottom-nav button.active span { animation: iconPop .5s var(--ease-spring); }
+    @keyframes iconPop { 0% { transform: scale(.6); } 60% { transform: scale(1.25) translateY(-2px); } 100% { transform: none; } }
+    .bottom-nav button[data-badge]:not([data-badge=""])::after { content: attr(data-badge); position: absolute; top: 2px; right: 22%; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: linear-gradient(135deg, var(--brand3), #ef4444); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; animation: iconPop .5s var(--ease-spring); }
+    .bottom-nav .nav-run span { background: linear-gradient(135deg, var(--brand1), var(--brand2) 55%, var(--brand3)); box-shadow: 0 8px 22px rgba(139, 92, 246, .55); position: relative; }
+    .bottom-nav .nav-run span::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--brand2); animation: ringPulse 2.4s ease-out infinite; }
+    @keyframes ringPulse { from { transform: scale(1); opacity: .7; } to { transform: scale(1.6); opacity: 0; } }
+    .bottom-nav .nav-run.busy span { animation: spin 1s linear infinite; }
+    body { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+    .hero { padding: 22px 18px 18px; border-radius: 26px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .mini-card { flex-basis: 78%; }
+    .undo-toast { bottom: calc(104px + env(safe-area-inset-bottom)); } #coach { bottom: calc(108px + env(safe-area-inset-bottom)); }
+    #tabPanelHome .stats-row { gap: 10px; }
+  }
+  @media (min-width: 761px) { .hero { padding: 32px 34px 28px; } .hero-cta { margin-top: 4px; } .home-sec .carousel { flex-wrap: nowrap; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 </style>
 </head>
 <body>
@@ -683,12 +836,63 @@
   <div class="server-banner" id="serverBanner"><span class="dot"></span><span id="serverBannerText">Checking for local server...</span></div>
 
   <div class="tab-bar" role="tablist">
+    <button class="tab-btn" id="tabBtnHome" role="tab">🏠 Beranda</button>
     <span id="scraperTabs" style="display:contents"></span>
     <button class="tab-btn" id="addScraperTabBtn" title="Tambah scraper baru">＋</button>
     <button class="tab-btn" id="tabBtnTracker" role="tab" aria-selected="false">📋 Lamaran saya</button>
   </div>
 
-  <div id="tabPanelScraped" class="tab-panel">
+  <div id="tabPanelHome" class="tab-panel" hidden>
+    <section class="hero" id="hero">
+      <div class="hero-blob b1"></div><div class="hero-blob b2"></div><div class="hero-blob b3"></div>
+      <div class="hero-top"><span class="hero-hi" id="heroHi">Halo 👋</span><span class="hero-date" id="heroDate"></span></div>
+      <h2 class="hero-title" id="heroTitle">Temukan magang impianmu</h2>
+      <p class="hero-sub" id="heroSub">Cari di 5 portal sekaligus, sekali ketuk.</p>
+      <div class="hero-cta" id="heroCta">
+        <button type="button" class="btn-hero" id="heroRun"><span class="ico">▶</span> Cari lowongan baru</button>
+        <button type="button" class="btn-ghost" id="heroKeyword">＋ Keyword</button>
+      </div>
+      <div class="radar" id="radar" hidden>
+        <div class="radar-scope"><i></i><i></i><i></i><b></b></div>
+        <div class="radar-info">
+          <div class="radar-title" id="radarTitle">Memindai portal…</div>
+          <div class="radar-count"><span id="radarFound">0</span> hasil ditemukan</div>
+          <div class="radar-bar"><div id="radarFill"></div></div>
+        </div>
+        <div class="radar-chips" id="radarChips"></div>
+      </div>
+    </section>
+
+    <section class="stats-row" id="statsRow">
+      <div class="stat-tile s1"><div class="num" data-count="0" id="stTotal">0</div><div class="lbl">Tersimpan</div></div>
+      <div class="stat-tile s2"><div class="num" data-count="0" id="stToday">0</div><div class="lbl">Baru hari ini</div></div>
+      <div class="stat-tile s3"><div class="num" data-count="0" id="stStudent">0</div><div class="lbl">Cocok mahasiswa</div></div>
+      <div class="stat-tile s4"><div class="num" data-count="0" id="stApplied">0</div><div class="lbl">Lamaran</div></div>
+    </section>
+
+    <section class="quickstart" id="quickStart" hidden>
+      <h3>Mulai dalam 10 detik ✨</h3>
+      <p>Ketuk satu saran di bawah, atau tulis sendiri. Setelah itu tekan <b>Cari</b>.</p>
+      <div class="suggest" id="suggestChips"></div>
+    </section>
+
+    <section class="home-sec" id="secTop" hidden>
+      <div class="sec-head"><h3>⭐ Paling cocok untukmu</h3><button type="button" class="link-btn" data-goto="jobs">Lihat semua ›</button></div>
+      <div class="carousel" id="topCarousel"></div>
+    </section>
+
+    <section class="home-sec" id="secDeadline" hidden>
+      <div class="sec-head"><h3>⏰ Deadline dekat</h3></div>
+      <div class="deadline-list" id="deadlineList"></div>
+    </section>
+
+    <section class="home-sec">
+      <div class="sec-head"><h3>🌐 Portal</h3></div>
+      <div class="portal-strip" id="portalStrip"></div>
+    </section>
+  </div>
+
+  <div id="tabPanelScraped" class="tab-panel" hidden>
     <div class="jobs-top">
       <div class="search-row">
         <label class="search-box"><span aria-hidden="true">🔍</span><input type="text" id="scrapedSearch" placeholder="Cari posisi, perusahaan, atau kota" enterkeyhint="search" autocomplete="off"></label>
@@ -820,7 +1024,6 @@
     </div>
   </div>
 
-  <footer id="footerLine">Generated by Claude Code · ai-job-search</footer>
   <footer class="author-footer">
     Built by <a href="https://www.linkedin.com/in/ahmad-fauzan-prayogi-39653b1a7/" target="_blank" rel="noopener">Ahmad Fauzan Prayogi</a>
     <svg width="13" height="13" viewBox="0 0 24 24" fill="#0A66C2" style="vertical-align:-2px;margin-left:3px" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.15 1.45-2.15 2.94v5.67H9.34V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13M7.12 20.45H3.56V9h3.56z"></path></svg>
@@ -963,9 +1166,12 @@
         <div class="full" id="autoBox" style="display:none">
           <label>🔔 Otomatis &amp; notifikasi</label>
           <label class="switch-row"><input type="checkbox" id="s_auto_enabled"> Cari otomatis saat aplikasi dibuka</label>
-          <label class="switch-row">Minimal jeda antar pencarian
+          <label class="switch-row">Cari otomatis tiap
             <select id="s_auto_hours"><option value="3">3 jam</option><option value="6">6 jam</option><option value="12">12 jam</option><option value="24">24 jam</option></select></label>
           <label class="switch-row"><input type="checkbox" id="s_notify_enabled"> Beri notifikasi kalau ada lowongan baru</label>
+          <label class="switch-row"><input type="checkbox" id="s_bg_enabled"> Cari di latar belakang (walau aplikasi ditutup)</label>
+          <p class="settings-help" id="bgStatus"></p>
+          <button type="button" id="bgTestBtn">Uji pencarian latar belakang sekarang</button>
           <p class="settings-help">Pencarian berjalan saat aplikasi dibuka atau kembali ke layar. Android tidak mengizinkan aplikasi ini mencari saat benar-benar tertutup.</p>
         </div>
         <div class="full phone-only-data">
@@ -1026,7 +1232,9 @@
   </div>
 </div>
 
+<div class="top-progress" id="topProgress"></div>
 <nav class="bottom-nav" id="bottomNav" aria-label="Navigasi utama">
+  <button type="button" data-nav="home"><span>🏠</span>Beranda</button>
   <button type="button" data-nav="jobs"><span>🔍</span>Lowongan</button>
   <button type="button" data-nav="run" class="nav-run"><span>▶</span>Cari</button>
   <button type="button" data-nav="tracker"><span>📋</span>Lamaran</button>
@@ -1425,10 +1633,7 @@
     var updated = localStorage.getItem(STORAGE_KEY + ".updated");
     document.getElementById("lastUpdated").textContent = updated
       ? "Diperbarui: " + new Date(updated).toLocaleString()
-      : "Belum ada data";
-    document.getElementById("footerLine").textContent =
-      "Generated by Claude Code · ai-job-search · " + new Date().toISOString().slice(0, 10) +
-      " · data stored in this browser's local storage";
+      : "Siap mencari";
   }
 
   // ---------- modal ----------
@@ -1780,6 +1985,12 @@
     document.getElementById("expiryHint").textContent =
       expiredCount > 0 ? expiredCount + " posting(s) currently older than " + maxAgeDays + " days" : "";
 
+    if (window.__homeReady) homeRender();
+    if (!rows.length && !scrapedData.length && document.getElementById("runScraperBtn").disabled) {
+      wrap.innerHTML = '<div class="skeleton"><i></i><div><b></b><b></b><b></b></div></div>'.repeat(4);
+      document.getElementById("scrapedPagination").innerHTML = "";
+      return;
+    }
     if (!rows.length) {
       wrap.innerHTML = scrapedData.length
         ? '<div class="empty-state"><div class="empty-ico">🔎</div><h3>Tidak ada yang cocok</h3><p>Coba ubah kata pencarian atau filter.</p><button type="button" data-empty="reset">Reset filter</button></div>'
@@ -1844,7 +2055,7 @@
       if (r.fit_score !== "" && r.fit_score != null) tags += '<span class="tag ' + (Number(r.fit_score) >= 50 ? "tag-ok" : "") + '">⭐ ' + Number(r.fit_score) + "</span>";
       if (r.deadline) tags += '<span class="tag ' + (deadlineClass(r)) + '">⏰ ' + escapeHtml(r.deadline) + "</span>";
       if (r.salary) tags += '<span class="tag">💰 ' + escapeHtml(r.salary) + "</span>";
-      return '<article class="job-card' + (selectMode && selectedRows[r.url] ? " picked" : "") + (expired ? " expired-row" : "") + (selectedJobUrl && selectedJobUrl === r.url ? " selected" : "") + '" data-i="' + i + '" tabindex="0">' +
+      return '<div class="swipe' + (suppressCardAnim ? "" : " enter") + '" style="--i:' + i + '"><div class="swipe-bg"><span class="r">＋ Simpan</span><span class="l">🗑 Hapus</span></div><article class="job-card' + (selectMode && selectedRows[r.url] ? " picked" : "") + (expired ? " expired-row" : "") + (selectedJobUrl && selectedJobUrl === r.url ? " selected" : "") + '" data-i="' + i + '" tabindex="0">' +
         (selectMode ? '<div class="sel-box">' + (selectedRows[r.url] ? "☑" : "☐") + "</div>" : avatarHtml(r.company)) +
         '<div class="job-main"><h3 class="job-title">' + escapeHtml(r.title || "—") + "</h3>" +
         '<div class="job-company">' + escapeHtml(r.company || "—") + "</div>" +
@@ -1854,9 +2065,10 @@
         '<div class="side-actions">' +
         (applied ? '<span class="tag tag-ok">✅ Dilamar</span>' : '<button type="button" class="track-btn" data-track="' + i + '" aria-label="Simpan ke lamaran">＋ Track</button>') +
         '<button type="button" class="del-btn" data-del="' + i + '" aria-label="Hapus lowongan" title="Hapus">🗑</button></div>' +
-        "</div></article>";
+        "</div></article></div>";
     }).join("");
 
+    wrap.querySelectorAll(".swipe").forEach(function (sw, idx) { attachSwipe(sw, pageRows[idx]); });
     wrap.querySelectorAll(".job-card").forEach(function (card) {
       var open = function () {
         var i = parseInt(card.getAttribute("data-i"), 10);
@@ -2047,8 +2259,10 @@
       if (window.__STANDALONE__) document.getElementById("schedHelp").textContent = "Format 24 jam (mis. 08:00). Di HP kamu dapat notifikasi pengingat tiap jam itu; ketuk notifikasinya dan pencarian langsung berjalan.";
       document.getElementById("autoBox").style.display = window.__STANDALONE__ ? "" : "none";
       document.getElementById("s_auto_enabled").checked = cfg.autoRunEnabled !== false;
-      document.getElementById("s_auto_hours").value = String(cfg.autoRunHours || 12);
+      document.getElementById("s_auto_hours").value = String(cfg.autoRunHours || 6);
       document.getElementById("s_notify_enabled").checked = cfg.notifyEnabled !== false;
+      document.getElementById("s_bg_enabled").checked = cfg.backgroundEnabled !== false;
+      (function () { var i = window.__bgInfo && window.__bgInfo(); document.getElementById("bgStatus").textContent = i && i.lastRun ? "Terakhir jalan di latar belakang: " + new Date(i.lastRun).toLocaleString() : "Android menjalankannya tiap 30 menit atau lebih (tergantung penghemat baterai). Matikan pembatasan baterai untuk aplikasi ini agar lebih rutin."; })();
       settingsBackdrop.classList.add("open");
     }).catch(function () { toast("Could not reach the local server"); });
   });
@@ -2072,8 +2286,9 @@
       excludeKeywords: linesToArray(document.getElementById("s_exclude").value),
       broadPortalFilter: document.getElementById("s_broad_filter").checked,
       autoRunEnabled: document.getElementById("s_auto_enabled").checked,
-      autoRunHours: parseInt(document.getElementById("s_auto_hours").value, 10) || 12,
+      autoRunHours: parseInt(document.getElementById("s_auto_hours").value, 10) || 6,
       notifyEnabled: document.getElementById("s_notify_enabled").checked,
+      backgroundEnabled: document.getElementById("s_bg_enabled").checked,
     });
     if (scraperConfig.notifyEnabled && window.__askNotifyPermission) window.__askNotifyPermission();
     saveScraperConfig(function () {
@@ -2280,20 +2495,24 @@
   var tabBtnTracker = document.getElementById("tabBtnTracker");
   var tabPanelScraped = document.getElementById("tabPanelScraped");
   var tabPanelTracker = document.getElementById("tabPanelTracker");
+  var tabPanelHome = document.getElementById("tabPanelHome");
   function showTab(name) {
-    var scraped = name !== "tracker";
-    currentView = scraped ? "scraper" : "tracker";
-    tabPanelScraped.hidden = !scraped;
-    tabPanelTracker.hidden = scraped;
-    tabBtnTracker.setAttribute("aria-selected", String(!scraped));
+    var view = name === "tracker" ? "tracker" : name === "home" ? "home" : "scraper";
+    currentView = view;
+    tabPanelHome.hidden = view !== "home";
+    tabPanelScraped.hidden = view !== "scraper";
+    tabPanelTracker.hidden = view !== "tracker";
+    tabBtnTracker.setAttribute("aria-selected", String(view === "tracker"));
     renderScraperTabs();
+    var hb = document.getElementById("tabBtnHome"); if (hb) hb.classList.toggle("active", view === "home");
     try { localStorage.setItem(STORAGE_KEY + ".activeTab", name); } catch (e) { /* ignore */ }
+    if (window.__homeReady) homeRender();
   }
   tabBtnTracker.addEventListener("click", function () { showTab("tracker"); });
   (function restoreTab() {
     var saved = null;
     try { saved = localStorage.getItem(STORAGE_KEY + ".activeTab"); } catch (e) { /* ignore */ }
-    showTab(saved === "tracker" ? "tracker" : "scraped");
+    showTab(saved === "tracker" ? "tracker" : saved === "scraped" ? "scraped" : "home");
   })();
 
   // ---------- deleting things: confirm dialog, undo, multi-select, tab deletion ----------
@@ -2483,7 +2702,7 @@
     if (!box.innerHTML) box.innerHTML = '<div class="d-empty">Pilih lowongan untuk melihat detail.</div>';
   }
 
-  window.addEventListener("sa:data", function () { if (typeof loadScraped === "function") loadScraped(); });
+  window.addEventListener("sa:data", function () { suppressCardAnim = true; setTimeout(function () { suppressCardAnim = false; }, 600); if (typeof loadScraped === "function") loadScraped(); });
 
   // Android hardware Back: close the top-most layer (detail, sheet, modal) instead of leaving the app.
   (function backLayers() {
@@ -2554,6 +2773,15 @@
       activeGroupName = "Pencarian 1";
       saveScraperConfig(function () { renderScraperTabs(); fillGroupPanel(); });
     }, true);
+    var bt = document.getElementById("bgTestBtn");
+    if (bt) bt.addEventListener("click", function () {
+      bt.disabled = true; toast("Menjalankan di latar belakang…");
+      window.__bgRunNow().then(function (r) {
+        bt.disabled = false;
+        var found = r && r.run && r.run.found;
+        toast(r && r.error ? "Gagal: " + r.error : found != null ? "Selesai: " + found + " lowongan baru" : "Selesai (" + JSON.stringify((r && r.run) || {}) + ")");
+      });
+    });
     var ra = document.getElementById("resetAllBtn");
     if (ra) ra.addEventListener("click", function () {
       askChoice("Hapus semua data?", "Keyword, lowongan tersimpan, lamaran, dan pengaturan di perangkat ini akan dihapus. Tidak bisa diurungkan.", [
@@ -2635,7 +2863,7 @@
 
     var steps = [
       { title: "Tambah keyword",
-        target: function () { return isOpen("scraperBackdrop") ? $("gp_keywords").parentNode.querySelector(".chip-add input") : $("scraperEditBtn"); },
+        target: function () { return isOpen("scraperBackdrop") ? $("gp_keywords").parentNode.querySelector(".chip-add input") : (currentView === "home" ? $("heroKeyword") : $("scraperEditBtn")); },
         text: function () { return isOpen("scraperBackdrop")
           ? "Ketik posisi yang kamu cari, misalnya Electrical Engineer Intern, lalu tekan Enter. Tambah beberapa kalau perlu, lalu tutup jendelanya."
           : "Mulai dari sini: ketuk Keyword, lalu isi posisi atau bidang yang kamu cari."; },
@@ -2645,9 +2873,9 @@
         text: function () { return "Tekan Cari. Aplikasi mencari di beberapa portal sekaligus, jadi cukup tunggu sebentar. Progresnya tampil di layar."; },
         done: function () { return !!firstCard(); } },
       { title: "Lihat detail lowongan",
-        target: firstCard,
+        target: function () { return (currentView === "home" && document.querySelector(".mini-card")) || (currentView === "scraper" ? firstCard() : null); },
         text: function () { return "Ketuk salah satu lowongan untuk melihat syarat, deadline, dan apakah terbuka untuk mahasiswa. Label hijau berarti cocok."; },
-        done: function () { return clicked.card; } },
+        done: function () { return clicked.card || document.body.classList.contains("detail-open"); } },
       { title: "Simpan yang menarik",
         target: function () { return $("detailTrack") || document.querySelector(".track-btn"); },
         text: function () { return "Ketuk Simpan atau Track untuk memasukkan lowongan ke daftar Lamaran, lalu ubah statusnya kapan saja. Boleh dilewati dengan Lanjut."; },
@@ -2698,18 +2926,245 @@
     $("coachNext").addEventListener("click", function () { goto(idx + 1); });
     document.addEventListener("click", function (e) {
       if (idx < 0) return;
-      if (e.target.closest(".job-card") && !e.target.closest("[data-track]")) clicked.card = true;
+      if (e.target.closest(".job-card, .mini-card, .dl-row") && !e.target.closest("[data-track]")) clicked.card = true;
       if (e.target.closest("[data-track], #detailTrack")) clicked.track = true;
     }, true);
     var tb = $("tutorialBtn");
     if (tb) tb.addEventListener("click", start);
 
-    // auto-start for a brand-new user: nothing configured, nothing scraped, tutorial never finished
-    setTimeout(function () {
-      var done = false;
-      try { done = localStorage.getItem(KEY) === "1"; } catch (e) { /* ignore */ }
-      if (!done && !hasKeywords() && !(typeof scrapedData !== "undefined" && scrapedData.length)) start();
-    }, 1600);
+  })();
+
+  // ---------- v3: home, radar, gestures, motion ----------
+  var PORTAL_LIST = ["LinkedIn", "JobStreet", "Glints", "MagangHub", "MAGENTA"];
+  var SUGGESTIONS = ["Electrical Engineer Intern", "IoT Engineer Intern", "Software Engineer Intern", "Data Analyst Intern", "UI/UX Design Intern", "Marketing Intern", "Akuntansi Magang", "Management Trainee"];
+  var suppressCardAnim = false;
+
+  function haptic(ms) { try { if (window.__STANDALONE__ && navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) { /* ignore */ } }
+  function $id(id) { return document.getElementById(id); }
+  function trackerCount() { try { var t = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); return Array.isArray(t) ? t.length : 0; } catch (e) { return 0; } }
+
+  function countUp(el, to) {
+    var from = Number(el.textContent) || 0, tok = (el.__tok = (el.__tok || 0) + 1);
+    if (from === to || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = String(to); return; }
+    var t0 = performance.now(), dur = 700;
+    (function step(now) {
+      if (el.__tok !== tok) return; // a newer animation took over
+      var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = String(Math.round(from + (to - from) * e));
+      if (p < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+
+  function greeting() {
+    var h = new Date().getHours();
+    return (h < 11 ? "Selamat pagi" : h < 15 ? "Selamat siang" : h < 19 ? "Selamat sore" : "Selamat malam") + " 👋";
+  }
+  function daysLeft(iso) { var t = Date.parse(iso); return isNaN(t) ? null : Math.ceil((t - Date.now()) / 86400000); }
+  function activeKeywords() { try { return groupsList().some(function (g) { return (g.keywords || []).length; }); } catch (e) { return false; } }
+
+  function addSuggestedKeyword(k) {
+    if (!groupsList().length) { scraperConfig.keywordGroups = [{ name: "Pencarian 1", enabled: true, keywords: [] }]; activeGroupName = "Pencarian 1"; }
+    var g = findGroup(activeGroupName) || groupsList()[0];
+    activeGroupName = g.name;
+    if ((g.keywords || []).map(function (x) { return x.toLowerCase(); }).indexOf(k.toLowerCase()) < 0) g.keywords = (g.keywords || []).concat([k]);
+    saveScraperConfig(function () { fillGroupPanel(); renderScraperTabs(); homeRender(); toast("Keyword \"" + k + "\" ditambahkan"); haptic(10); var done = false; try { done = localStorage.getItem("jobsearch.tutorial.v2") === "1"; } catch (e) { /* ignore */ } if (!done && window.__startTutorial) window.__startTutorial(); });
+  }
+
+  function homeRender() {
+    if (!$id("tabPanelHome")) return;
+    var rows = scrapedData || [], today = new Date().toISOString().slice(0, 10);
+    (function () { var lr = 0; try { lr = Number(localStorage.getItem("sa.lastRun") || 0); } catch (e) { /* ignore */ } if (lr) { var m = Math.round((Date.now() - lr) / 60000); $id("lastUpdated").textContent = "Terakhir dicari " + (m < 1 ? "baru saja" : m < 60 ? m + " menit lalu" : m < 1440 ? Math.round(m / 60) + " jam lalu" : Math.round(m / 1440) + " hari lalu"); } })();
+    $id("heroHi").textContent = greeting();
+    $id("heroDate").textContent = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
+    var hasKw = activeKeywords();
+    var student = rows.filter(function (r) { return r.eligibility === "student_ok"; }).length;
+    var soon = rows.filter(function (r) { var d = daysLeft(r.deadline_iso); return d != null && d >= 0 && d <= 7; }).length;
+    if (rows.length) { $id("heroTitle").textContent = rows.length + " lowongan menunggumu"; $id("heroSub").textContent = student + " cocok untuk mahasiswa" + (soon ? " · " + soon + " deadline minggu ini" : "") + "."; }
+    else if (!hasKw) { $id("heroTitle").textContent = "Selamat datang di JobSearch"; $id("heroSub").textContent = "Aplikasi pencari magang dan kerja dari 5 portal. Mulai dengan satu keyword."; }
+    else { $id("heroTitle").textContent = "Siap mencari!"; $id("heroSub").textContent = "Tekan tombol di bawah, hasil dari 5 portal muncul dalam hitungan detik."; }
+    $id("heroRun").innerHTML = '<span class="ico">▶</span> ' + (hasKw ? "Cari lowongan baru" : "Mulai");
+    countUp($id("stTotal"), rows.length);
+    countUp($id("stToday"), rows.filter(function (r) { return r.found_date === today; }).length);
+    countUp($id("stStudent"), student);
+    countUp($id("stApplied"), trackerCount());
+
+    // quick start
+    var qs = $id("quickStart"); qs.hidden = hasKw;
+    if (!hasKw && !$id("suggestChips").children.length) {
+      $id("suggestChips").innerHTML = SUGGESTIONS.map(function (k) { return '<button type="button" class="sugg" data-kw="' + escapeHtml(k) + '">＋ ' + escapeHtml(k) + "</button>"; }).join("");
+    }
+
+    // top carousel: best fit first, then newest
+    var top = rows.slice().filter(function (r) { return !isExpiredPosting(r, getMaxAgeDays()); }).sort(function (a, b) {
+      var fa = Number(a.fit_score) || 0, fb = Number(b.fit_score) || 0;
+      return fb !== fa ? fb - fa : String(b.found_date || "").localeCompare(String(a.found_date || ""));
+    }).slice(0, 8);
+    $id("secTop").hidden = !top.length;
+    $id("topCarousel").innerHTML = top.map(function (r, i) {
+      var fit = Number(r.fit_score) || 0;
+      return '<article class="mini-card" data-url="' + escapeHtml(r.url) + '" style="--i:' + i + '">' + avatarHtml(r.company) +
+        '<div class="mini-title">' + escapeHtml(r.title || "") + '</div><div class="mini-co">' + escapeHtml(r.company || "") + "</div>" +
+        '<div class="mini-foot"><span class="fit-ring" style="--p:' + Math.min(100, fit) + '"><b>' + fit + '</b></span><span class="mini-loc">' + escapeHtml(r.location || "") + "</span></div></article>";
+    }).join("");
+
+    // deadline list
+    var dl = rows.map(function (r) { return { r: r, d: daysLeft(r.deadline_iso) }; }).filter(function (x) { return x.d != null && x.d >= 0 && x.d <= 14; }).sort(function (a, b) { return a.d - b.d; }).slice(0, 5);
+    $id("secDeadline").hidden = !dl.length;
+    $id("deadlineList").innerHTML = dl.map(function (x, i) {
+      return '<div class="dl-row" data-url="' + escapeHtml(x.r.url) + '" style="--i:' + i + '">' + avatarHtml(x.r.company) + '<div class="dl-main"><b>' + escapeHtml(x.r.title || "") + "</b><span>" + escapeHtml(x.r.company || "") + '</span></div><span class="dl-chip ' + (x.d <= 2 ? "hot" : "") + '">' + (x.d === 0 ? "hari ini" : x.d + " hari") + "</span></div>";
+    }).join("");
+
+    // portals
+    var counts = {}; rows.forEach(function (r) { counts[r.portal] = (counts[r.portal] || 0) + 1; });
+    var map = { LinkedIn: "linkedin", JobStreet: "jobstreet", Glints: "glints", MagangHub: "maganghub", MAGENTA: "magenta" };
+    $id("portalStrip").innerHTML = PORTAL_LIST.map(function (p, i) {
+      var n = counts[map[p]] || 0;
+      return '<div class="portal-chip" style="--i:' + i + '"><span class="pdot ' + (n ? "on" : "") + '"></span><b>' + p + "</b><span>" + n + "</span></div>";
+    }).join("");
+
+    // badge on the "Lowongan" tab: how many are new since it was last opened
+    var seenCount = 0; try { seenCount = Number(localStorage.getItem("jobsearch.seenCount") || 0); } catch (e) { /* ignore */ }
+    var fresh = Math.max(0, rows.length - seenCount);
+    var jb = document.querySelector('#bottomNav [data-nav="jobs"]');
+    if (jb) { jb.setAttribute("data-badge", currentView === "scraper" || fresh === 0 ? "" : String(Math.min(fresh, 99))); }
+    if (currentView === "scraper") { try { localStorage.setItem("jobsearch.seenCount", String(rows.length)); } catch (e) { /* ignore */ } }
+  }
+
+  // ---- radar: turns the raw log into a live, readable progress view ----
+  function parseRadar(text) {
+    var st = {}; PORTAL_LIST.forEach(function (p) { st[p] = { state: "idle", n: 0 }; });
+    var last = null, done = false;
+    function norm(s) { return PORTAL_LIST.filter(function (p) { return p.toLowerCase() === String(s).toLowerCase(); })[0]; }
+    text.split("\n").forEach(function (line) {
+      var m = /(LinkedIn|JobStreet|Glints|MagangHub|MAGENTA)/i.exec(line);
+      if (/Pencarian selesai|Selesai dalam|✔ Selesai/.test(line)) { done = true; return; }
+      if (m) { last = norm(m[1]); if (st[last].state === "idle") st[last].state = "run"; }
+      var mh = /(\d+) hasil/.exec(line);
+      if (mh && last) { st[last].n += Number(mh[1]); st[last].state = "ok"; }
+      if (m && /diblokir|blocked|Failed|✖|⚠/i.test(line)) st[norm(m[1])].state = "warn";
+    });
+    return { st: st, done: done };
+  }
+  var radarHideTimer = null;
+  function radarTick() {
+    var box = $id("radar"); if (!box) return;
+    var busy = $id("runScraperBtn").disabled;
+    var r = parseRadar($id("logBox").innerText || "");
+    var total = 0, finished = 0;
+    PORTAL_LIST.forEach(function (p) { total += r.st[p].n; if (r.st[p].state === "ok" || r.st[p].state === "warn") finished++; });
+    $id("radarChips").innerHTML = PORTAL_LIST.map(function (p) {
+      var s = r.st[p]; return '<span class="rchip ' + s.state + '">' + (s.state === "ok" ? "✔" : s.state === "warn" ? "⚠" : s.state === "run" ? "…" : "•") + " " + p + (s.n ? " " + s.n : "") + "</span>";
+    }).join("");
+    countUp($id("radarFound"), total);
+    $id("radarFill").style.width = (r.done ? 100 : Math.min(94, 10 + finished * 17)) + "%";
+    $id("radarTitle").textContent = r.done ? "Selesai! 🎉" : busy ? "Memindai portal…" : "Siap";
+    if (busy) { clearTimeout(radarHideTimer); box.hidden = false; $id("heroCta").hidden = true; document.body.classList.add("busy"); }
+    else if (!box.hidden) {
+      document.body.classList.remove("busy");
+      clearTimeout(radarHideTimer);
+      radarHideTimer = setTimeout(function () { box.hidden = true; $id("heroCta").hidden = false; homeRender(); }, 3200);
+    }
+  }
+  new MutationObserver(radarTick).observe($id("logBox"), { childList: true, subtree: true, characterData: true });
+  new MutationObserver(radarTick).observe($id("runScraperBtn"), { attributes: true, attributeFilter: ["disabled"] });
+
+  // ---- ripple + haptics on every button ----
+  document.addEventListener("pointerdown", function (e) {
+    var b = e.target.closest && e.target.closest("button, .btn-link, .mini-card, .dl-row, .sugg");
+    if (!b || b.disabled) return;
+    var r = b.getBoundingClientRect(), s = Math.max(r.width, r.height) * 1.6;
+    var d = document.createElement("span");
+    d.className = "ripple"; d.style.cssText = "width:" + s + "px;height:" + s + "px;left:" + (e.clientX - r.left - s / 2) + "px;top:" + (e.clientY - r.top - s / 2) + "px";
+    if (getComputedStyle(b).position === "static") b.style.position = "relative";
+    b.classList.add("has-ripple"); b.appendChild(d);
+    setTimeout(function () { d.remove(); }, 650);
+    if (b.matches("button")) haptic(6);
+  }, true);
+
+  // ---- confetti when something is saved ----
+  function confetti(x, y) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var colors = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#38bdf8"];
+    for (var i = 0; i < 26; i++) {
+      var p = document.createElement("i"); p.className = "confetti";
+      var a = Math.random() * Math.PI * 2, v = 90 + Math.random() * 170;
+      p.style.cssText = "left:" + x + "px;top:" + y + "px;background:" + colors[i % colors.length] + ";--dx:" + Math.cos(a) * v + "px;--dy:" + (Math.sin(a) * v - 120) + "px;--r:" + (Math.random() * 720 - 360) + "deg";
+      document.body.appendChild(p); setTimeout((function (el) { return function () { el.remove(); }; })(p), 1300);
+    }
+  }
+  var lastTrackerCount = trackerCount();
+  function checkTracked() {
+    var n = trackerCount();
+    if (n > lastTrackerCount) { confetti(window.innerWidth / 2, window.innerHeight * 0.55); toast("Tersimpan di Lamaran 🎉"); haptic(20); }
+    lastTrackerCount = n;
+  }
+
+  // ---- swipe cards: right = save, left = delete ----
+  function attachSwipe(swipe, row) {
+    var card = swipe.querySelector(".job-card"), x0 = 0, y0 = 0, dx = 0, drag = false, locked = null, id = null;
+    card.style.touchAction = "pan-y";
+    card.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" || selectMode || e.target.closest("button")) return;
+      x0 = e.clientX; y0 = e.clientY; dx = 0; drag = true; locked = null; id = e.pointerId;
+    });
+    card.addEventListener("pointermove", function (e) {
+      if (!drag || e.pointerId !== id) return;
+      var mx = e.clientX - x0, my = e.clientY - y0;
+      if (locked === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) { locked = Math.abs(mx) > Math.abs(my) * 1.2; if (locked) { try { card.setPointerCapture(id); } catch (x) { /* ignore */ } } }
+      if (!locked) return;
+      dx = Math.max(-170, Math.min(170, mx));
+      card.style.transition = "none";
+      card.style.transform = "translateX(" + dx + "px) rotate(" + dx / 40 + "deg)";
+      swipe.setAttribute("data-dir", dx > 30 ? "r" : dx < -30 ? "l" : "");
+      swipe.style.setProperty("--pull", Math.min(1, Math.abs(dx) / 90));
+    });
+    function end() {
+      if (!drag) return; drag = false;
+      card.style.transition = "";
+      if (locked) card.addEventListener("click", function stop(e) { e.stopPropagation(); e.preventDefault(); card.removeEventListener("click", stop, true); }, true);
+      if (dx > 90) { card.style.transform = ""; swipe.removeAttribute("data-dir"); haptic(15); startTrack(row); }
+      else if (dx < -90) { card.style.transform = "translateX(-120%) rotate(-8deg)"; card.style.opacity = "0"; haptic(15); setTimeout(function () { deleteScrapedRows([row]); }, 220); }
+      else { card.style.transform = ""; swipe.removeAttribute("data-dir"); }
+      dx = 0;
+    }
+    card.addEventListener("pointerup", end); card.addEventListener("pointercancel", end);
+  }
+
+  // ---- home interactions ----
+  function goto(view) { showTab(view === "jobs" ? "scraped" : view); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  (function homeWiring() {
+    $id("heroRun").addEventListener("click", function () {
+      if (!activeKeywords()) { $id("scraperEditBtn").click(); return; }
+      $id("runScraperBtn").click();
+    });
+    $id("heroKeyword").addEventListener("click", function () { $id("scraperEditBtn").click(); });
+    $id("suggestChips").addEventListener("click", function (e) { var b = e.target.closest(".sugg"); if (b) { b.classList.add("picked"); addSuggestedKeyword(b.getAttribute("data-kw")); } });
+    $id("tabPanelHome").addEventListener("click", function (e) {
+      var g = e.target.closest("[data-goto]"); if (g) { goto(g.getAttribute("data-goto")); return; }
+      var c = e.target.closest("[data-url]"); if (!c) return;
+      var url = c.getAttribute("data-url"), row = scrapedData.filter(function (r) { return r.url === url; })[0];
+      if (row) { goto("jobs"); setTimeout(function () { showJobDetail(row); }, 120); }
+    });
+    // suggestion chips inside the keyword sheet
+    var kw = $id("gp_keywords");
+    if (kw) {
+      var box = document.createElement("div"); box.className = "suggest sheet-suggest";
+      box.innerHTML = '<div class="f-label">Saran cepat</div>' + SUGGESTIONS.slice(0, 6).map(function (k) { return '<button type="button" class="sugg" data-kw="' + escapeHtml(k) + '">＋ ' + escapeHtml(k) + "</button>"; }).join("");
+      kw.parentNode.appendChild(box);
+      box.addEventListener("click", function (e) {
+        var b = e.target.closest(".sugg"); if (!b) return;
+        var cur = kw.value.split(String.fromCharCode(10)).filter(Boolean), k = b.getAttribute("data-kw");
+        if (cur.map(function (x) { return x.toLowerCase(); }).indexOf(k.toLowerCase()) < 0) { cur.push(k); kw.value = cur.join(String.fromCharCode(10)); haptic(8); }
+        b.classList.add("picked");
+      });
+    }
+    var hb = $id("tabBtnHome"); if (hb) hb.addEventListener("click", function () { showTab("home"); });
+    document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
+      new MutationObserver(function () { if (!bd.classList.contains("open")) setTimeout(checkTracked, 80); }).observe(bd, { attributes: true, attributeFilter: ["class"] });
+    });
+    window.addEventListener("sa:data", function () { suppressCardAnim = true; setTimeout(function () { suppressCardAnim = false; }, 600); });
+    window.__homeReady = true;
+    homeRender();
   })();
 
   // ---------- theme, bottom nav ----------
@@ -2726,16 +3181,17 @@
 
     var nav = document.getElementById("bottomNav");
     function markNav() {
-      var cur = currentView === "tracker" ? "tracker" : "jobs";
+      var cur = currentView === "tracker" ? "tracker" : currentView === "home" ? "home" : "jobs";
       [].forEach.call(nav.querySelectorAll("button"), function (b) { b.classList.toggle("active", b.getAttribute("data-nav") === cur); });
     }
     nav.addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
       var a = b.getAttribute("data-nav");
-      if (a === "jobs") { showTab("scraped"); window.scrollTo(0, 0); }
+      if (a === "home") { showTab("home"); window.scrollTo(0, 0); }
+      else if (a === "jobs") { showTab("scraped"); window.scrollTo(0, 0); }
       else if (a === "tracker") { showTab("tracker"); window.scrollTo(0, 0); }
       else if (a === "settings") { document.getElementById("settingsBtn").click(); }
-      else if (a === "run") { showTab("scraped"); document.getElementById("runScraperBtn").click(); }
+      else if (a === "run") { if (!(document.querySelector("#scraperTabs") && groupsList().some(function (g) { return (g.keywords || []).length; }))) { showTab("home"); document.getElementById("scraperEditBtn").click(); } else { document.getElementById("runScraperBtn").click(); if (currentView === "tracker") showTab("home"); } }
       setTimeout(markNav, 0);
     });
     var origShow = showTab; showTab = function (n) { origShow(n); markNav(); };

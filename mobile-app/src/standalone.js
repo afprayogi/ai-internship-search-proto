@@ -116,7 +116,7 @@
     pushLog(group ? '[app] Menjalankan grup: ' + group : '[app] Menjalankan semua grup aktif');
     var seen = load(K.seen, {});
     var finished = false;
-    function finish() { if (finished) return; finished = true; run.running = false; run.exitCode = 0; pushLog('[app] Selesai.'); emitDone(); }
+    function finish() { if (finished) return; finished = true; run.running = false; run.exitCode = 0; pushLog('[app] Selesai.'); emitDone(); syncBackground(); }
     window.ScraperLib.runScrape({
       config: getConfig(), group: group || '', seen: seen, tracker: load(K.tracker, []), log: pushLog,
       // results are stored + shown as soon as the search itself is done; details are filled in afterwards
@@ -184,13 +184,13 @@
     if (!(c.keywordGroups || []).some(function (g) { return g.enabled !== false && (g.keywords || []).length; })) return;
     var sc = c.schedule;
     if (sc && sc.enabled && sc.times && sc.times.length) { if (lastRunAt() >= lastDue(sc)) return; }
-    else if (c.autoRunEnabled === false || Date.now() - lastRunAt() < (c.autoRunHours || 12) * 3600000) return;
+    else if (c.autoRunEnabled === false || Date.now() - lastRunAt() < (c.autoRunHours || 6) * 3600000) return;
     var btn = document.getElementById('runScraperBtn');
     if (btn && !btn.disabled) { btn.click(); }
   }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(maybeAutoRun, 1500); });
   window.addEventListener('load', function () {
-    setTimeout(function () { syncSchedule(); maybeAutoRun(); }, 3000);
+    setTimeout(function () { syncSchedule(); ready.then(function () { return drainBackground(); }).then(function () { syncBackground(); enrichPending(); maybeAutoRun(); }); }, 3000);
   });
 
   // Android hardware Back: close the top layer (detail / sheet / modal), only leave the app when nothing is open.
@@ -202,6 +202,60 @@
     });
   });
 
+  // ---- background runner bridge ------------------------------------------------
+  // The OS wakes a headless runner (runners/runner.js) every ~30 min; it runs the scraper when a search is due and posts
+  // a notification. The runner has separate storage, so the app pushes its state in ("sync") and collects results ("drain").
+  var BR_LABEL = 'id.afprayogi.jobsearch.check';
+  function BR() { return native && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundRunner; }
+  function syncBackground() {
+    var p = BR(); if (!p) return Promise.resolve();
+    var tracker = load(K.tracker, []).map(function (r) { return { company: r.company, role: r.role, status: r.status }; });
+    return p.dispatchEvent({ label: BR_LABEL, event: 'sync', details: { config: getConfig(), seenUrls: Object.keys(load(K.seen, {})).slice(-2500), tracker: tracker, lastRun: Number(load('sa.lastRun', 0)) || 0 } }).catch(function () {});
+  }
+  function drainBackground() {
+    var p = BR(); if (!p) return Promise.resolve(null);
+    return p.dispatchEvent({ label: BR_LABEL, event: 'drain', details: {} }).then(function (res) {
+      if (!res) return null;
+      var have = {}; load(K.scraped, []).forEach(function (r) { have[r.url] = 1; });
+      var fresh = (res.records || []).filter(function (r) { return r.url && !have[r.url]; });
+      if (fresh.length) store(K.scraped, fresh.concat(load(K.scraped, [])));
+      var seen = load(K.seen, {}); Object.keys(res.seenAdded || {}).forEach(function (u) { seen[u] = { title: '', company: '', first_seen: '' }; }); store(K.seen, seen);
+      if (res.lastRun) { store('sa.lastRun', Math.max(Number(load('sa.lastRun', 0)) || 0, res.lastRun)); store('sa.bgInfo', { lastRun: res.lastRun, lastLog: res.lastLog || '' }); }
+      if (fresh.length) window.dispatchEvent(new Event('sa:data'));
+      setTimeout(enrichPending, 400);
+      return { fresh: fresh.length };
+    }).catch(function () { return null; });
+  }
+  // Fill in details (requirements, deadline, eligibility) for records the background runner found, 5 at a time, while the app is open.
+  var enriching = false;
+  function enrichPending() {
+    if (enriching || !window.ScraperLib || !window.ScraperLib.enrichRecord) return;
+    var todo = load(K.scraped, []).filter(function (r) { return r._pending; });
+    if (!todo.length) return;
+    enriching = true;
+    var i = 0, batch = [], cfg = getConfig();
+    function worker() {
+      if (i >= todo.length) return Promise.resolve();
+      var rec = todo[i++];
+      return window.ScraperLib.enrichRecord(rec, cfg).then(function (patch) {
+        patch._pending = ''; batch.push(Object.assign({}, rec, patch));
+        if (batch.length >= 10) { patchScraped(batch); batch = []; window.dispatchEvent(new Event('sa:data')); }
+      }).catch(function () { /* leave it pending, the detail screen retries on open */ }).then(worker);
+    }
+    Promise.all([worker(), worker(), worker(), worker(), worker()]).then(function () {
+      if (batch.length) { patchScraped(batch); window.dispatchEvent(new Event('sa:data')); }
+      enriching = false;
+    });
+  }
+  window.__bgInfo = function () { return load('sa.bgInfo', null); };
+  window.__bgRunNow = function () {
+    var p = BR(); if (!p) return Promise.resolve({ error: 'tidak tersedia' });
+    return syncBackground().then(function () { return p.dispatchEvent({ label: BR_LABEL, event: 'checkNewJobs', details: { force: true } }); })
+      .then(function (r) { return drainBackground().then(function (d) { return { run: r, drained: d }; }); })
+      .catch(function (e) { return { error: String((e && e.message) || e) }; });
+  };
+  document.addEventListener('visibilitychange', function () { if (document.hidden) syncBackground(); else drainBackground(); });
+
   // ---- fake /api routes ----------------------------------------------------
   function json(data, status) {
     return Promise.resolve(new Response(JSON.stringify(data), { status: status || 200, headers: { 'Content-Type': 'application/json' } }));
@@ -212,7 +266,7 @@
     var method = ((init && init.method) || 'GET').toUpperCase();
     if (path === '/api/scraped' && method === 'GET') return json(load(K.scraped, []));
     if (path === '/api/config' && method === 'GET') return json(getConfig());
-    if (path === '/api/config' && method === 'POST') { var c = bodyOf(init); if (!Array.isArray(c.keywordGroups)) return json({ error: 'keywordGroups array required' }, 400); store(K.config, c); setTimeout(syncSchedule, 0); return json(c); }
+    if (path === '/api/config' && method === 'POST') { var c = bodyOf(init); if (!Array.isArray(c.keywordGroups)) return json({ error: 'keywordGroups array required' }, 400); store(K.config, c); setTimeout(syncSchedule, 0); setTimeout(syncBackground, 50); return json(c); }
     if (path === '/api/scraper/run' && method === 'POST') return json(startRun(bodyOf(init).group));
     if (path === '/api/scraper/state') return json({ running: run.running, exitCode: run.exitCode, startedAt: run.startedAt });
     if (path === '/api/tracker' && method === 'GET') return json(load(K.tracker, []));

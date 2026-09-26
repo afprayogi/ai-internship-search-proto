@@ -3,6 +3,16 @@
   "appName": "Job Search",
   "webDir": "www",
   "plugins": {
-    "CapacitorHttp": { "enabled": true }
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "BackgroundRunner": {
+      "label": "id.afprayogi.jobsearch.check",
+      "src": "runners/runner.js",
+      "event": "checkNewJobs",
+      "repeat": true,
+      "interval": 30,
+      "autoStart": true
+    }
   }
 }

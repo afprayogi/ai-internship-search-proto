@@ -115,7 +115,7 @@
       res = await fetch('https://id.jobstreet.com/id/jobs?keywords=' + encodeURIComponent(query) + '&page=' + page, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*;q=0.8', 'Accept-Language': 'id-ID,id;q=0.9' } });
       html = await res.text();
     } catch (e) { return { jobs: [], blocked: false, error: String(e.message || e) }; }
-    if (!res.ok) return { jobs: [], blocked: res.headers.get('cf-mitigated') === 'challenge' || /Just a moment/i.test(html), error: 'HTTP ' + res.status };
+    if (!res.ok) return { jobs: [], blocked: (res.headers && res.headers.get && res.headers.get('cf-mitigated')) === 'challenge' || /Just a moment/i.test(html), error: 'HTTP ' + res.status };
     const raw = extractJsonAfterMarker(html, 'window.SEEK_APOLLO_DATA');
     if (!raw) return { jobs: [], blocked: false, error: 'data not found' };
     let data; try { data = JSON.parse(raw); } catch { return { jobs: [], blocked: false, error: 'bad json' }; }
@@ -189,7 +189,7 @@
   
   var magentaSession = null;
   function cookiesFrom(res) {
-    var raw = res.headers.get('set-cookie') || '';
+    var raw = (res.headers && res.headers.get && res.headers.get('set-cookie')) || '';
     return raw.split(/,(?=\s*[A-Za-z0-9_.-]+=)/).map(function (c) { return c.split(';')[0].trim(); }).filter(Boolean).join('; ');
   }
   async function magentaOpen() {
@@ -562,6 +562,7 @@
     for (const r of records) if (r.portal === 'maganghub') Object.assign(r, await enrichRecord(r, cfg));
     log('✔ Pencarian selesai: ' + records.length + ' lowongan baru' + (fresh.length ? ' (detail dilengkapi di latar belakang)' : '') + '.');
     if (opts.onProvisional) await opts.onProvisional(records, seenAdditions);
+    if (opts.skipDetails) return { records, seenAdditions };
 
     // 2) Fill in details in the background, 6 at a time, reporting every few records so the UI can refresh.
     const pending = records.filter((r) => r._pending);

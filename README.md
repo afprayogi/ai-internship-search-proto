@@ -18,14 +18,14 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/app-list.png" alt="Daftar lowongan" width="24%">
-  <img src="assets/screenshots/app-detail.png" alt="Detail lowongan" width="24%">
-  <img src="assets/screenshots/app-filter.png" alt="Filter" width="24%">
-  <img src="assets/screenshots/app-scraper.png" alt="Atur keyword" width="24%">
+  <img src="assets/screenshots/app-home.png" alt="Beranda" width="24%">
+  <img src="assets/screenshots/app-radar.png" alt="Radar pencarian" width="24%">
+  <img src="assets/screenshots/app-jobs.png" alt="Daftar lowongan" width="24%">
+  <img src="assets/screenshots/app-fresh.png" alt="Mulai dari nol" width="24%">
 </p>
 <p align="center">
-  <img src="assets/screenshots/dashboard-desktop.png" alt="Dashboard desktop dua panel" width="80%">
-  <br><sub>Data contoh: lowongan publik dari MagangHub. UI yang sama di HP dan desktop (daftar + detail).</sub>
+  <img src="assets/screenshots/dashboard-desktop.png" alt="Dashboard desktop" width="80%">
+  <br><sub>Data contoh: lowongan publik dari MagangHub.</sub>
 </p>
 
 ## Fitur
@@ -33,6 +33,8 @@
 - **5 portal, 1 daftar:** hasil digabung, dideduplikasi, dan tidak menampilkan lowongan yang sudah kamu lamar.
 - **Tab scraper:** satu tab per nama pekerjaan, masing-masing punya keyword sendiri dan tombol Run.
 - **Info yang diekstrak:** syarat, deadline, kelayakan mahasiswa/lulusan, skor kecocokan (0-100), jarak ke lokasimu.
+- **Berjalan di latar belakang (Android):** tiap 6 jam (bisa diubah di Setelan) aplikasi mencari sendiri walau tertutup dan mengirim notifikasi "N lowongan baru". Hasilnya masuk ke aplikasi begitu dibuka. Android menjalankannya tiap ±30 menit atau lebih jarang sesuai penghemat baterai.
+- **Tampilan baru:** Beranda dengan radar pencarian langsung, statistik beranimasi, kartu gesek (kanan = simpan, kiri = hapus), konfeti saat menyimpan, dan saran keyword satu ketukan.
 - **Jadwal otomatis:** jalan sendiri di jam yang kamu atur (`08:00`, `19:00`, ...).
 - **Notifikasi:** pengingat harian dan pemberitahuan lowongan baru di HP; WhatsApp di PC.
 - **Pelacak lamaran:** status, statistik, import/export CSV.
