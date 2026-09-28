@@ -804,6 +804,30 @@
   }
   @media (min-width: 761px) { .hero { padding: 32px 34px 28px; } .hero-cta { margin-top: 4px; } .home-sec .carousel { flex-wrap: nowrap; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+  /* ---------- v4: tracker cards, settings groups, ranking, policy ---------- */
+  .tag-new { background: linear-gradient(135deg, var(--brand3), #f59e0b); color: #fff; }
+  .pipe { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; scrollbar-width: none; } .pipe::-webkit-scrollbar { display: none; }
+  .pipe-chip { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-weight: 700; font-size: 13px; min-height: 0; box-shadow: none; }
+  .pipe-chip b { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: color-mix(in srgb, var(--c, var(--brand2)) 22%, transparent); color: var(--c, var(--brand2)); font-size: 12px; }
+  .pipe-chip.active { background: var(--c, var(--brand2)); border-color: var(--c, var(--brand2)); color: #fff; } .pipe-chip.active b { background: rgba(255, 255, 255, .25); color: #fff; }
+  .charts-fold { margin-bottom: 14px; border: 1px solid var(--border); border-radius: 18px; background: var(--card-bg); } .charts-fold > summary { padding: 14px 16px; font-weight: 700; cursor: pointer; } .charts-fold[open] > summary { border-bottom: 1px solid var(--border); }
+  .charts-fold > .stats, .charts-fold > .charts { padding: 12px; margin: 0; }
+  #tabPanelTracker .table-card { padding: 0; border: none; background: transparent; box-shadow: none; }
+  .app-card { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px; margin-bottom: 12px; border-radius: 22px; background: var(--card-bg); border: 1px solid var(--border); border-left: 5px solid var(--c, var(--brand2)); box-shadow: var(--shadow-xs); animation: rise .45s var(--ease-out) backwards; animation-delay: calc(min(var(--i, 0), 10) * 40ms); }
+  .app-role { font-weight: 800; font-size: 15px; line-height: 1.3; } .app-co { font-size: 13px; color: var(--text-muted); font-weight: 600; margin-top: 2px; } .app-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .app-notes { margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: var(--card-bg-2); font-size: 12.5px; color: var(--text-muted); }
+  .app-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; } .app-actions button { min-height: 0; padding: 6px 12px; border-radius: 999px; font-size: 12px; }
+  .status-btn { background: var(--c); border-color: var(--c) !important; color: #fff; font-weight: 800; }
+  .set-group { border: 1px solid var(--border); border-radius: 18px; background: var(--card-bg); overflow: hidden; }
+  .set-group > summary { padding: 14px 16px; font-weight: 800; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  .set-group > summary::after { content: "▾"; transition: transform .25s var(--ease-spring); color: var(--text-muted); } .set-group[open] > summary::after { transform: rotate(180deg); }
+  .set-group[open] > summary { border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--brand2) 6%, transparent); }
+  .set-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; } .set-body > .full { display: block !important; }
+  .set-body > #autoBox[style*="none"], .set-body > #dangerBox[style*="none"] { display: none !important; }
+  .rw { display: grid; grid-template-columns: 1fr 120px 34px; gap: 10px; align-items: center; font-size: 13px; padding: 4px 0; } .rw input[type="range"] { width: 100%; accent-color: var(--brand2); } .rw b { text-align: right; }
+  .policy h4 { margin: 16px 0 4px; } .policy p { margin: 0; line-height: 1.6; font-size: 14px; color: var(--text); }
+  .dlg { max-height: 88vh; overflow: auto; }
 </style>
 </head>
 <body>
@@ -824,6 +848,7 @@
         <div class="menu" id="appMenu" hidden>
           <button id="addBtn">＋ Tambah lamaran</button>
           <button id="tutorialBtn">❓ Panduan penggunaan</button>
+          <button id="menuPrivacy">🔒 Kebijakan privasi</button>
           <button id="settingsBtn">⚙️ Pengaturan pencarian</button>
           <button id="linkedinCookieBtn">🔗 Login LinkedIn feed</button>
           <hr>
@@ -903,12 +928,13 @@
         <button type="button" id="scraperEditBtn" class="pill-btn">Keyword</button>
       </div>
       <div class="chip-row" id="quickChips">
-        <button type="button" class="qchip active" data-q="all">Semua</button>
+        <button type="button" class="qchip active" data-q="all">⭐ Terbaik</button>
         <button type="button" class="qchip" data-q="student">🎓 Cocok mahasiswa</button>
-        <button type="button" class="qchip" data-q="fit">⭐ Paling cocok</button>
         <button type="button" class="qchip" data-q="deadline">⏰ Deadline dekat</button>
-              </div>
-      <div class="result-meta"><span id="scrapedSub">0 lowongan</span><button type="button" id="selectModeBtn" class="link-btn">☑ Pilih</button></div>
+        <button type="button" class="qchip" data-q="recent">🕒 Terbaru</button>
+        <button type="button" class="qchip" data-q="new" id="chipNew" hidden>🆕 Baru<b></b></button>
+      </div>
+      <div class="result-meta"><span id="scrapedSub">0 lowongan</span><span><button type="button" id="markReadBtn" class="link-btn" hidden>✓ Tandai dibaca</button><button type="button" id="selectModeBtn" class="link-btn">☑ Pilih</button></span></div>
     </div>
     <details class="log-details" id="logDetails"><summary>Progress pencarian</summary><div class="log-box" id="logBox"></div></details>
     <div class="jobs-layout">
@@ -926,6 +952,7 @@
       <div class="sheet-body">
         <label class="f-label">Urutkan</label>
         <select id="scrapedSort">
+          <option value="score">Terbaik (skor gabungan)</option>
           <option value="found_date">Terbaru</option>
           <option value="fit_score">Paling cocok</option>
           <option value="deadline">Deadline terdekat</option>
@@ -1017,8 +1044,9 @@
       <div class="section-head">
         <div><h2>📋 My applications</h2></div>
       </div>
+      <div class="pipe" id="trackerPipe"></div>
       <div class="table-toolbar">
-        <input type="text" id="searchInput" placeholder="Search company, role, or sector...">
+        <input type="text" id="searchInput" placeholder="Cari perusahaan, posisi, atau sektor...">
         <select id="statusFilter"><option value="">All statuses</option></select>
         <select id="sectorFilter"><option value="">All sectors</option></select>
       </div>
@@ -1161,6 +1189,28 @@
         <div class="full">
           <label class="switch-row"><span>Saring hasil MAGENTA &amp; MagangHub yang tidak relevan</span><input type="checkbox" id="s_broad_filter"></label>
         </div>
+        <div class="full" id="rankBox">
+          <label>⚖️ Peringkat lowongan (skor gabungan)</label>
+          <p class="settings-help">Atur seberapa penting tiap hal. Urutan "Terbaik" memakai bobot ini. Aplikasi juga belajar dari lowongan yang kamu simpan atau hapus.</p>
+          <div class="rw"><span>Kecocokan skill</span><input type="range" id="rw_fit" min="0" max="100"><b></b></div>
+          <div class="rw"><span>Cocok untuk mahasiswa</span><input type="range" id="rw_elig" min="0" max="100"><b></b></div>
+          <div class="rw"><span>Kebaruan</span><input type="range" id="rw_fresh" min="0" max="100"><b></b></div>
+          <div class="rw"><span>Deadline mendesak</span><input type="range" id="rw_deadline" min="0" max="100"><b></b></div>
+          <div class="rw"><span>Selera saya (belajar)</span><input type="range" id="rw_learn" min="0" max="100"><b></b></div>
+          <label class="switch-row"><span>Gabungkan lowongan yang sama dari beberapa portal</span><input type="checkbox" id="s_dedupe"></label>
+          <button type="button" class="link-btn" id="resetPrefsBtn">Reset pembelajaran selera</button>
+        </div>
+        <div class="full" id="backupBox">
+          <label>💾 Cadangan &amp; pindah perangkat</label>
+          <p class="settings-help" id="backupInfo">Simpan semua data (keyword, lowongan, lamaran, selera) ke satu file. Kirim ke Google Drive atau WhatsApp, atau pulihkan di HP/PC lain.</p>
+          <div class="data-row"><button type="button" id="backupExportBtn">📤 Cadangkan</button><button type="button" id="backupImportBtn">📥 Pulihkan</button></div>
+          <input type="file" id="backupFile" accept=".json,application/json" hidden>
+        </div>
+        <div class="full" id="privacyBox">
+          <label>🔒 Privasi</label>
+          <p class="settings-help">Semua data tersimpan di perangkatmu. Tidak ada akun, iklan, atau pelacak.</p>
+          <button type="button" id="privacyOpenBtn">Baca kebijakan privasi</button>
+        </div>
         <div class="full" id="dangerBox" style="display:none">
           <label>Zona berbahaya</label>
           <button type="button" class="danger" id="resetAllBtn">Hapus semua data &amp; mulai ulang</button>
@@ -1249,6 +1299,27 @@
   <button type="button" class="danger" id="selDelete">🗑 Hapus</button>
   <button type="button" id="selCancel">Batal</button>
 </div>
+<div class="sheet-backdrop" id="privacyBackdrop">
+  <div class="sheet" role="dialog" aria-label="Kebijakan privasi">
+    <div class="sheet-head"><h3>Kebijakan privasi</h3><button type="button" class="pill-btn" id="privacyClose">Tutup</button></div>
+    <div class="sheet-body policy">
+      <p><i>Terakhir diperbarui: 28 September 2026</i></p>
+      <h4>Data kamu tetap di perangkatmu</h4>
+      <p>Keyword, pengaturan, lowongan yang ditemukan, lamaran yang kamu catat, dan preferensi peringkat disimpan <b>hanya di perangkat ini</b>. Tidak ada akun, server yang menerima datamu, iklan, analitik, atau pelacak.</p>
+      <h4>Koneksi jaringan</h4>
+      <p>Untuk mencari, aplikasi membuka halaman publik LinkedIn, JobStreet, Glints, MAGENTA, dan MagangHub langsung dari perangkatmu. Yang dikirim hanya kata kunci pencarian. Portal tersebut punya kebijakan privasinya sendiri. Aplikasi tidak memakai cookie atau login akun portal.</p>
+      <h4>Izin Android</h4>
+      <p><b>Internet</b> untuk mengambil lowongan. <b>Notifikasi</b> untuk memberi tahu lowongan baru. <b>Latar belakang</b> untuk mencari otomatis (bawaan tiap 6 jam, bisa dimatikan di Setelan). Aplikasi tidak meminta lokasi.</p>
+      <h4>Cadangan</h4>
+      <p>Fitur Cadangkan membuat satu berkas JSON dan membuka menu berbagi; kamu yang memilih tujuannya. Berkas tidak terenkripsi. Android juga dapat mencadangkan data aplikasi ke akun Google-mu lewat pengaturan sistem.</p>
+      <h4>Menghapus data</h4>
+      <p>Hapus per lowongan, per tab, atau semuanya lewat Setelan → Data → Hapus semua data. Menghapus aplikasi juga menghapus semua data lokal.</p>
+      <h4>Kontak</h4>
+      <p>Buka <i>issue</i> di repositori proyek (berkas PRIVACY.md memuat versi lengkap dan ringkasan bahasa Inggris).</p>
+    </div>
+  </div>
+</div>
+<input type="file" id="backupFilePicker" accept=".json,application/json" hidden>
 <div class="dlg-backdrop" id="dlg"><div class="dlg" role="alertdialog"><h3></h3><p></p><div class="dlg-actions"></div></div></div>
 <div class="undo-toast" id="undoToast"></div>
 <div class="toast" id="toast"></div>
@@ -1546,7 +1617,9 @@
     var statusF = document.getElementById("statusFilter").value;
     var sectorF = document.getElementById("sectorFilter").value;
 
+    renderPipe();
     var filtered = rows.filter(function (r) {
+      if (trackerBucketFilter && bucketOf(r.status) !== trackerBucketFilter) return false;
       if (statusF && r.status !== statusF) return false;
       if (sectorF && r.sector !== sectorF) return false;
       if (search) {
@@ -1558,8 +1631,8 @@
 
     var wrap = document.getElementById("tableWrap");
     if (!filtered.length) {
-      wrap.innerHTML = '<div class="empty-state">' + (rows.length ? "No applications match these filters." :
-        "No applications yet. Click “+ Add application” to get started.") + '</div>';
+      wrap.innerHTML = '<div class="empty-state">' + (rows.length ? "Tidak ada lamaran yang cocok dengan filter ini." :
+        "Belum ada lamaran. Ketuk “＋ Tambah lamaran”, atau simpan lowongan dengan tombol Track.") + '</div>';
       document.getElementById("trackerPagination").innerHTML = "";
       return;
     }
@@ -1571,39 +1644,8 @@
     var pageStart = (trackerPage - 1) * PAGE_SIZE;
     var pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
 
-    var body = pageRows.map(function (r) {
-      var idx = data.indexOf(r);
-      var bucket = bucketOf(r.status);
-      var notes = r.notes || "";
-      var notesShort = notes.length > 80 ? notes.slice(0, 80) + "…" : notes;
-      var source = r.source || "";
-      var sourceCell = source
-        ? (/^https?:\/\//i.test(source)
-            ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noopener">Link</a>'
-            : escapeHtml(source))
-        : "—";
-      return "<tr>" +
-        "<td>" + escapeHtml(r.date || "—") + "</td>" +
-        "<td>" + escapeHtml(r.company || "—") + "</td>" +
-        "<td>" + escapeHtml(r.role || "—") + "</td>" +
-        "<td>" + escapeHtml(r.sector || "—") + "</td>" +
-        "<td>" + escapeHtml(r.channel || "—") + "</td>" +
-        '<td><span class="pill" style="background:' + BUCKET_COLOR[bucket] + '">' + escapeHtml(r.status || bucket) + "</span></td>" +
-        '<td class="notes-cell" title="' + escapeHtml(notes) + '">' + (escapeHtml(notesShort) || "—") + "</td>" +
-        "<td>" + sourceCell + "</td>" +
-        '<td class="row-actions">' +
-          '<button data-edit="' + idx + '">Edit</button> ' +
-          '<button data-del="' + idx + '">Delete</button>' +
-        "</td>" +
-      "</tr>";
-    }).join("");
-
-    wrap.innerHTML =
-      '<table><thead><tr>' +
-      "<th>Date</th><th>Company</th><th>Role</th><th>Sector</th><th>Channel</th>" +
-      "<th>Status</th><th>Notes</th><th>Source</th><th>Actions</th>" +
-      "</tr></thead><tbody>" + body + "</tbody></table>";
-    labelCells(wrap);
+    wrap.innerHTML = trackerCardsHtml(pageRows);
+    wrap.querySelectorAll("[data-status]").forEach(function (btn) { btn.addEventListener("click", function () { changeStatus(parseInt(btn.getAttribute("data-status"), 10)); }); });
 
     wrap.querySelectorAll("[data-edit]").forEach(function (btn) {
       btn.addEventListener("click", function () { openModal(parseInt(btn.getAttribute("data-edit"), 10)); });
@@ -1960,6 +2002,7 @@
       if (expired) expiredCount++;
       if (hideExpired && expired) return false;
       if (portalF && r.portal !== portalF) return false;
+      if (newOnly && !r._new) return false;
       if (groupF && r.keyword_group && r.keyword_group !== groupF) return false;
       if (tierF && r.location_tier !== tierF) return false;
       if (eligF === "none" ? r.eligibility : (eligF && r.eligibility !== eligF)) return false;
@@ -1968,8 +2011,10 @@
         if (hay.indexOf(search) === -1) return false;
       }
       return true;
-    }).sort(function (a, b) {
-      if (sortBy === "fit_score") {
+    });
+    rows = dedupeRows(rows).sort(function (a, b) {
+      if (sortBy === "score") { var sa = scoreOf(a), sb = scoreOf(b); if (sa !== sb) return sb - sa; }
+      else if (sortBy === "fit_score") {
         var fa = a.fit_score === "" || a.fit_score == null ? -1 : Number(a.fit_score);
         var fb = b.fit_score === "" || b.fit_score == null ? -1 : Number(b.fit_score);
         if (fa !== fb) return fb - fa;
@@ -1989,6 +2034,7 @@
       expiredCount > 0 ? expiredCount + " posting(s) currently older than " + maxAgeDays + " days" : "";
 
     if (window.__homeReady) homeRender();
+    updateNewChip();
     if (!rows.length && !scrapedData.length && document.getElementById("runScraperBtn").disabled) {
       wrap.innerHTML = '<div class="skeleton"><i></i><div><b></b><b></b><b></b></div></div>'.repeat(4);
       document.getElementById("scrapedPagination").innerHTML = "";
@@ -2055,7 +2101,9 @@
       var tags = '<span class="tag">' + escapeHtml(PORTAL_NAME[r.portal] || r.portal || "") + "</span>";
       if (et) tags += '<span class="tag ' + et[0] + '">' + et[1] + "</span>";
       if (r._pending) tags += '<span class="tag">⏳ melengkapi</span>';
-      if (r.fit_score !== "" && r.fit_score != null) tags += '<span class="tag ' + (Number(r.fit_score) >= 50 ? "tag-ok" : "") + '">⭐ ' + Number(r.fit_score) + "</span>";
+      var sc = scoreOf(r); tags += '<span class="tag ' + (sc >= 65 ? "tag-ok" : "") + '">⭐ ' + sc + "</span>";
+      if (r.__alsoN) tags += '<span class="tag">＋' + r.__alsoN + " portal lain</span>";
+      if (r._new) tags = '<span class="tag tag-new">🆕 baru</span>' + tags;
       if (r.deadline) tags += '<span class="tag ' + (deadlineClass(r)) + '">⏰ ' + escapeHtml(r.deadline) + "</span>";
       if (r.salary) tags += '<span class="tag">💰 ' + escapeHtml(r.salary) + "</span>";
       return '<div class="swipe' + (suppressCardAnim ? "" : " enter") + '" style="--i:' + i + '"><div class="swipe-bg"><span class="r">＋ Simpan</span><span class="l">🗑 Hapus</span></div><article class="job-card' + (selectMode && selectedRows[r.url] ? " picked" : "") + (expired ? " expired-row" : "") + (selectedJobUrl && selectedJobUrl === r.url ? " selected" : "") + '" data-i="' + i + '" tabindex="0">' +
@@ -2265,6 +2313,7 @@
       document.getElementById("s_auto_hours").value = String(cfg.autoRunHours || 6);
       document.getElementById("s_notify_enabled").checked = cfg.notifyEnabled !== false;
       document.getElementById("s_bg_enabled").checked = cfg.backgroundEnabled !== false;
+      (function () { var w = cfg.rankWeights || {}, d = { fit: 40, elig: 25, fresh: 15, deadline: 10, learn: 10 }; Object.keys(d).forEach(function (k) { var el = document.getElementById("rw_" + k); el.value = w[k] != null ? w[k] : d[k]; el.nextElementSibling.textContent = el.value; }); document.getElementById("s_dedupe").checked = cfg.dedupeCross !== false; })();
       (function () { var i = window.__bgInfo && window.__bgInfo(); document.getElementById("bgStatus").textContent = i && i.lastRun ? "Terakhir jalan di latar belakang: " + new Date(i.lastRun).toLocaleString() : "Android menjalankannya tiap 30 menit atau lebih (tergantung penghemat baterai). Matikan pembatasan baterai untuk aplikasi ini agar lebih rutin."; })();
       settingsBackdrop.classList.add("open");
     }).catch(function () { toast("Could not reach the local server"); });
@@ -2292,6 +2341,8 @@
       autoRunHours: parseInt(document.getElementById("s_auto_hours").value, 10) || 6,
       notifyEnabled: document.getElementById("s_notify_enabled").checked,
       backgroundEnabled: document.getElementById("s_bg_enabled").checked,
+      rankWeights: { fit: +document.getElementById("rw_fit").value, elig: +document.getElementById("rw_elig").value, fresh: +document.getElementById("rw_fresh").value, deadline: +document.getElementById("rw_deadline").value, learn: +document.getElementById("rw_learn").value },
+      dedupeCross: document.getElementById("s_dedupe").checked,
     });
     if (scraperConfig.notifyEnabled && window.__askNotifyPermission) window.__askNotifyPermission();
     saveScraperConfig(function () {
@@ -2563,7 +2614,7 @@
   // Delete with a 5s undo window: the UI updates instantly, the real delete is sent after the window closes.
   function deleteScrapedRows(rows) {
     if (!rows.length) return;
-    var urls = {}; rows.forEach(function (r) { urls[r.url] = 1; });
+    var urls = {}; rows.forEach(function (r) { urls[r.url] = 1; learnFrom(r, -1); });
     scrapedData = scrapedData.filter(function (x) { return !urls[x.url]; });
     if (urls[selectedJobUrl]) { selectedJobUrl = ""; closeJobDetail(); }
     var entry = { rows: rows, done: false };
@@ -2639,6 +2690,7 @@
     return Math.floor(d / 30) + " bulan lalu";
   }
   function startTrack(r) {
+    lastLearnRow = r;
     openModal(null, { company: r.company, role: r.title, source: r.url, channel: "online", notes: "Found via scraper (" + r.portal + ")" });
   }
   function detailHtml(r) {
@@ -2654,7 +2706,9 @@
       row("Lokasi", escapeHtml(r.location || "") + (dist != null ? " (~" + Math.round(dist) + " km)" : "")) +
       row("Jarak", escapeHtml(r.location_tier || "")) +
       row("Kelayakan", ELIG[r.eligibility] || "") +
-      row("Kecocokan", r.fit_score !== "" && r.fit_score != null ? Number(r.fit_score) + " / 100" : "") +
+      row("Skor gabungan", scoreOf(r) + " / 100") +
+      row("Kecocokan skill", r.fit_score !== "" && r.fit_score != null ? Number(r.fit_score) + " / 100" : "") +
+      row("Juga tersedia di", r.__also && r.__also.length ? escapeHtml(r.__also.join(", ")) : "") +
       row("Deadline", escapeHtml(r.deadline || "")) +
       row("Diposting", escapeHtml(r.posted_date || r.found_date || "")) +
       row("Gaji", escapeHtml(r.salary || "")) +
@@ -2692,7 +2746,7 @@
       var row = (window.__jobRows || [])[parseInt(c.getAttribute("data-i"), 10)];
       c.classList.toggle("selected", !!row && row.url === selectedJobUrl);
     });
-    if (!quiet) document.body.classList.add("detail-open");
+    if (!quiet) { document.body.classList.add("detail-open"); learnFrom(r, 0.15); }
     document.getElementById("detailBack").addEventListener("click", function () { closeJobDetail(); });
     var tb = document.getElementById("detailTrack");
     if (tb) tb.addEventListener("click", function () { startTrack(r); });
@@ -2802,21 +2856,20 @@
     var portal = document.getElementById("scrapedPortalFilter"), tier = document.getElementById("scrapedTierFilter"), hide = document.getElementById("hideExpiredCheck");
     function fire(el) { el.dispatchEvent(new Event("change", { bubbles: true })); }
     function syncChips() {
-      var cur = elig.value === "student_ok" ? "student" : sort.value === "fit_score" ? "fit" : sort.value === "deadline" ? "deadline" : (elig.value === "" && sort.value === "found_date") ? "all" : "";
-      [].forEach.call(document.querySelectorAll("#quickChips .qchip"), function (c) {
-        var q = c.getAttribute("data-q");
-        c.classList.toggle("active", q === cur || (q === "new" && cur === "all" && false));
-      });
+      var cur = newOnly ? "new" : elig.value === "student_ok" ? "student" : sort.value === "deadline" ? "deadline" : sort.value === "found_date" ? "recent" : "all";
+      [].forEach.call(document.querySelectorAll("#quickChips .qchip"), function (c) { c.classList.toggle("active", c.getAttribute("data-q") === cur); });
       var n = (portal.value ? 1 : 0) + (tier.value ? 1 : 0) + (elig.value && elig.value !== "student_ok" ? 1 : 0) + (hide.checked ? 0 : 1);
       var badge = document.getElementById("filterCount");
       badge.hidden = !n; badge.textContent = n;
     }
+    window.__syncChips = syncChips;
     document.getElementById("quickChips").addEventListener("click", function (e) {
       var c = e.target.closest(".qchip"); if (!c) return;
       var q = c.getAttribute("data-q");
+      newOnly = q === "new";
       elig.value = q === "student" ? "student_ok" : "";
-      sort.value = q === "fit" ? "fit_score" : q === "deadline" ? "deadline" : "found_date";
-      fire(elig); fire(sort); syncChips();
+      sort.value = q === "deadline" ? "deadline" : q === "recent" ? "found_date" : "score";
+      fire(elig); fire(sort); syncChips(); renderScrapedTable();
     });
     [elig, sort, portal, tier, hide].forEach(function (el) { el.addEventListener("change", syncChips); });
     syncChips();
@@ -2836,7 +2889,9 @@
     new MutationObserver(function () {
       var busy = run.disabled;
       if (nav) nav.classList.toggle("busy", busy);
-      if (busy) { var ld = document.getElementById("logDetails"); ld.classList.add("has-log"); ld.open = true; }
+      var ld = document.getElementById("logDetails");
+      if (busy) { ld.classList.add("has-log"); ld.open = true; }
+      else { ld.open = false; } // finished: fold the raw log away, the radar/home already summarize it
     }).observe(run, { attributes: true, attributeFilter: ["disabled"] });
 
     // tracker: add button (menu is hidden on phones' main flow)
@@ -2999,12 +3054,12 @@
 
     // top carousel: best fit first, then newest
     var top = rows.slice().filter(function (r) { return !isExpiredPosting(r, getMaxAgeDays()); }).sort(function (a, b) {
-      var fa = Number(a.fit_score) || 0, fb = Number(b.fit_score) || 0;
+      var fa = scoreOf(a), fb = scoreOf(b);
       return fb !== fa ? fb - fa : String(b.found_date || "").localeCompare(String(a.found_date || ""));
     }).slice(0, 8);
     $id("secTop").hidden = !top.length;
     $id("topCarousel").innerHTML = top.map(function (r, i) {
-      var fit = Number(r.fit_score) || 0;
+      var fit = scoreOf(r);
       return '<article class="mini-card" data-url="' + escapeHtml(r.url) + '" style="--i:' + i + '">' + avatarHtml(r.company) +
         '<div class="mini-title">' + escapeHtml(r.title || "") + '</div><div class="mini-co">' + escapeHtml(r.company || "") + "</div>" +
         '<div class="mini-foot"><span class="fit-ring" style="--p:' + Math.min(100, fit) + '"><b>' + fit + '</b></span><span class="mini-loc">' + escapeHtml(r.location || "") + "</span></div></article>";
@@ -3098,7 +3153,7 @@
   var lastTrackerCount = trackerCount();
   function checkTracked() {
     var n = trackerCount();
-    if (n > lastTrackerCount) { confetti(window.innerWidth / 2, window.innerHeight * 0.55); toast("Tersimpan di Lamaran 🎉"); haptic(20); }
+    if (n > lastTrackerCount) { if (lastLearnRow) { learnFrom(lastLearnRow, 2); lastLearnRow = null; } confetti(window.innerWidth / 2, window.innerHeight * 0.55); toast("Tersimpan di Lamaran 🎉"); haptic(20); }
     lastTrackerCount = n;
   }
 
@@ -3168,6 +3223,237 @@
     window.addEventListener("sa:data", function () { suppressCardAnim = true; setTimeout(function () { suppressCardAnim = false; }, 600); });
     window.__homeReady = true;
     homeRender();
+  })();
+
+  // ---------- v4: ranking, dedupe, learning, tracker cards, settings groups, backup, privacy ----------
+  var PREF_KEY = "jobsearch.prefs.v1", newOnly = false, trackerBucketFilter = "", lastLearnRow = null, prefsCache = null;
+  var STOP4 = { intern: 1, internship: 1, magang: 1, fresh: 1, graduate: 1, junior: 1, staff: 1, trainee: 1, and: 1, dan: 1, the: 1, for: 1, untuk: 1, program: 1, officer: 1, pt: 1, cv: 1, tbk: 1, persero: 1, region: 1 };
+  var PORTAL_LABEL = { linkedin: "LinkedIn", jobstreet: "JobStreet", glints: "Glints", magenta: "MAGENTA", maganghub: "MagangHub" };
+  function num4(v, d) { v = Number(v); return isNaN(v) ? d : v; }
+  function loadPrefs() { try { var p = JSON.parse(localStorage.getItem(PREF_KEY) || "null"); return p && p.w ? p : { w: {} }; } catch (e) { return { w: {} }; } }
+  function savePrefs(p) { prefsCache = null; try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch (e) { /* ignore */ } }
+  function tokens4(r) {
+    var seen = {}, out = [];
+    String((r.title || "") + " " + (r.company || "")).toLowerCase().split(/[^a-z0-9+#]+/).forEach(function (t) { if (t.length >= 3 && !STOP4[t] && !seen[t]) { seen[t] = 1; out.push(t); } });
+    return out;
+  }
+  // "Selera saya": every posting you save (+) or delete (-) nudges the weight of its words; scoreOf() reads them back.
+  function learnFrom(r, delta) {
+    if (!r) return;
+    var p = loadPrefs();
+    tokens4(r).forEach(function (t) { p.w[t] = Math.max(-8, Math.min(8, (p.w[t] || 0) + delta)); });
+    var keys = Object.keys(p.w);
+    if (keys.length > 600) keys.sort(function (a, b) { return Math.abs(p.w[b]) - Math.abs(p.w[a]); }).slice(600).forEach(function (k) { delete p.w[k]; });
+    savePrefs(p);
+  }
+  function learnScore(r) {
+    if (!prefsCache) prefsCache = loadPrefs();
+    var t = tokens4(r); if (!t.length) return 0.5;
+    var s = 0; t.forEach(function (k) { s += prefsCache.w[k] || 0; });
+    return 0.5 + 0.5 * Math.tanh(s / Math.sqrt(t.length) / 3);
+  }
+  function rankWeights() {
+    var w = (scraperConfig && scraperConfig.rankWeights) || {};
+    return { fit: num4(w.fit, 40), elig: num4(w.elig, 25), fresh: num4(w.fresh, 15), deadline: num4(w.deadline, 10), learn: num4(w.learn, 10) };
+  }
+  // 0-100 combined score: skill fit + student eligibility + freshness + deadline urgency + learned taste, weights from Settings.
+  function scoreOf(r) {
+    var W = rankWeights(), sum = W.fit + W.elig + W.fresh + W.deadline + W.learn; if (!sum) return 0;
+    var fit = Math.min(100, Number(r.fit_score) || 0) / 100;
+    var elig = r.eligibility === "student_ok" ? 1 : r.eligibility === "unclear" ? 0.5 : r.eligibility === "graduate_required" ? 0 : 0.4;
+    var t = Date.parse(r.posted_date || r.found_date), age = isNaN(t) ? 14 : Math.max(0, (Date.now() - t) / 86400000), fresh = Math.exp(-age / 14);
+    var d = r.deadline_iso ? daysLeft(r.deadline_iso) : null, dl = d == null ? 0.4 : d < 0 ? 0 : d <= 3 ? 1 : d <= 14 ? 0.7 : 0.4;
+    return Math.round(100 * (W.fit * fit + W.elig * elig + W.fresh * fresh + W.deadline * dl + W.learn * learnScore(r)) / sum);
+  }
+
+  // Same job on several portals -> one card ("+2 portal lain"). Key = normalized company + order-free title words.
+  function dedupeKey(r) {
+    var t = String(r.title || "").toLowerCase().replace(/&amp;/g, "&").split(/[^a-z0-9]+/).filter(function (w) { return w && !STOP4[w]; }).sort().join(" ");
+    var c = normalizeCompanyText(r.company);
+    return c && t ? c + "|" + t : "";
+  }
+  function dedupeRows(rows) {
+    prefsCache = null;
+    if (scraperConfig && scraperConfig.dedupeCross === false) return rows;
+    var map = {}, out = [];
+    rows.forEach(function (r) {
+      var k = dedupeKey(r); r.__also = null; r.__alsoN = 0;
+      if (!k) { out.push(r); return; }
+      var e = map[k];
+      if (!e) { map[k] = { p: r, others: [] }; out.push(map[k]); return; }
+      if ((r.description || "").length > (e.p.description || "").length) { e.others.push(e.p); e.p = r; } else e.others.push(r);
+    });
+    return out.map(function (x) {
+      if (!x.p) return x;
+      var seen = {};
+      x.p.__also = x.others.map(function (o) { return PORTAL_LABEL[o.portal] || o.portal; }).filter(function (n) { if (seen[n]) return false; seen[n] = 1; return true; });
+      x.p.__alsoN = x.others.length;
+      return x.p;
+    });
+  }
+
+  // "Baru" filter: postings that arrived from the background search and were not looked at yet.
+  function updateNewChip() {
+    var n = scrapedData.filter(function (r) { return r._new; }).length;
+    var c = document.getElementById("chipNew"); if (c) { c.hidden = !n && !newOnly; c.querySelector("b").textContent = n ? " " + n : ""; }
+    var mr = document.getElementById("markReadBtn"); if (mr) mr.hidden = !newOnly || !n;
+  }
+  function markNewRead() {
+    scrapedData.forEach(function (r) { delete r._new; });
+    newOnly = false;
+    fetch("/api/scraped/mark-read", { method: "POST" }).catch(function () { /* ignore */ });
+    if (window.__syncChips) window.__syncChips();
+    renderScrapedTable();
+  }
+  window.addEventListener("sa:new", function (e) {
+    newOnly = true; showTab("scraped");
+    if (window.__syncChips) window.__syncChips();
+    toast(((e.detail && e.detail.n) || "") + " lowongan baru dari pencarian otomatis 🎉");
+  });
+
+  // ---- tracker: cards + status pipeline instead of a wide table ----
+  var STATUS_LABEL = { applied: "Dilamar", interview: "Wawancara", interview_only: "Hanya wawancara", offer: "Penawaran", offer_declined: "Tawaran ditolak", hired: "Diterima", rejected: "Ditolak", no_response: "Tanpa kabar", withdrawn: "Ditarik" };
+  var BUCKET_LABEL = { "Active": "Dilamar", "Interview": "Wawancara", "Offer": "Penawaran", "Hired": "Diterima", "Rejected/Closed": "Ditutup" };
+  function statusText(s) { var k = String(s || "applied").toLowerCase().replace(/ /g, "_"); return STATUS_LABEL[k] || s || "Dilamar"; }
+  function trackerCardsHtml(pageRows) {
+    return pageRows.map(function (r, n) {
+      var idx = data.indexOf(r), b = bucketOf(r.status), src = r.source || "";
+      return '<article class="app-card" style="--i:' + n + ";--c:" + BUCKET_COLOR[b] + '">' + avatarHtml(r.company) +
+        '<div class="app-main"><div class="app-role">' + escapeHtml(r.role || "—") + '</div><div class="app-co">' + escapeHtml(r.company || "—") + "</div>" +
+        '<div class="app-meta">' + escapeHtml([r.date, r.channel, r.sector].filter(Boolean).join(" · ")) + "</div>" +
+        (r.notes ? '<div class="app-notes">' + escapeHtml(String(r.notes).slice(0, 120)) + "</div>" : "") +
+        '<div class="app-actions"><button type="button" class="status-btn" data-status="' + idx + '">' + escapeHtml(statusText(r.status)) + " ▾</button>" +
+        (/^https?:\/\//i.test(src) ? '<a class="link-btn" href="' + escapeHtml(src) + '" target="_blank" rel="noopener">Buka ↗</a>' : "") +
+        '<button type="button" data-edit="' + idx + '">Ubah</button><button type="button" class="danger" data-del="' + idx + '">Hapus</button></div></div></article>';
+    }).join("");
+  }
+  function changeStatus(idx) {
+    var r = data[idx]; if (!r) return;
+    var opts = Object.keys(STATUS_LABEL).map(function (k) { return { label: STATUS_LABEL[k], value: k, primary: k === String(r.status || "").toLowerCase() }; });
+    opts.push({ label: "Batal", value: null });
+    askChoice("Ubah status", (r.company || "") + " · " + (r.role || ""), opts).then(function (v) {
+      if (!v) return;
+      r.status = v; save(data); renderAll(); toast("Status: " + STATUS_LABEL[v]);
+      if (v === "interview" || v === "offer" || v === "hired") confetti(window.innerWidth / 2, window.innerHeight * 0.5);
+    });
+  }
+  function renderPipe() {
+    var box = document.getElementById("trackerPipe"); if (!box) return;
+    var counts = {}; data.forEach(function (r) { var b = bucketOf(r.status); counts[b] = (counts[b] || 0) + 1; });
+    box.innerHTML = '<button type="button" class="pipe-chip ' + (!trackerBucketFilter ? "active" : "") + '" data-b="">Semua <b>' + data.length + "</b></button>" +
+      BUCKET_ORDER.map(function (b) { return '<button type="button" class="pipe-chip ' + (trackerBucketFilter === b ? "active" : "") + '" data-b="' + b + '" style="--c:' + BUCKET_COLOR[b] + '">' + BUCKET_LABEL[b] + " <b>" + (counts[b] || 0) + "</b></button>"; }).join("");
+  }
+
+  // ---- settings: collapse the long form into sections ----
+  function groupSettings() {
+    var form = document.getElementById("settingsForm"), grid = form && form.querySelector(".form-grid");
+    if (!grid || grid.__grouped) return; grid.__grouped = true;
+    function top(id) { var el = document.getElementById(id); while (el && el.parentNode !== grid) el = el.parentNode; return el; }
+    var groups = [
+      ["🔎 Pencarian", ["s_ideal_locations", "s_acceptable_locations", "s_linkedin_pages", "s_jobstreet_pages"], true],
+      ["🎯 Preferensi & peringkat", ["s_profile_skills", "s_majors", "s_exclude", "s_broad_filter", "rankBox"], false],
+      ["🔔 Otomatis & notifikasi", ["s_sched_enabled", "autoBox"], false],
+      ["💾 Data & cadangan", ["backupBox", "importBtnProxy", "dangerBox"], false],
+      ["🔒 Privasi", ["privacyBox"], false],
+    ];
+    var pd = grid.querySelector(".phone-only-data"); if (pd) pd.id = "importBtnProxy";
+    groups.forEach(function (g) {
+      var d = document.createElement("details"); d.className = "set-group full"; if (g[2]) d.open = true;
+      d.innerHTML = "<summary>" + g[0] + "</summary><div class=\"set-body\"></div>";
+      var body = d.querySelector(".set-body"), first = null;
+      g[1].forEach(function (id) { var el = top(id); if (el) { if (!first) first = el; body.appendChild(el); el.classList.remove("phone-only-data"); el.style.display = el.id === "dangerBox" || el.id === "autoBox" ? el.style.display : ""; } });
+      grid.appendChild(d);
+    });
+  }
+
+  // ---- backup / restore (works on phone and PC; same file format) ----
+  function buildBackup() {
+    return Promise.all([fetch("/api/config").then(function (r) { return r.json(); }), fetch("/api/scraped").then(function (r) { return r.json(); })]).then(function (a) {
+      return { app: "jobsearch", version: 1, exportedAt: new Date().toISOString(), config: a[0], scraped: a[1], tracker: data, prefs: loadPrefs() };
+    });
+  }
+  function deliverBackup(name, text) {
+    var P = window.Capacitor && window.Capacitor.Plugins;
+    if (window.__STANDALONE__ && P && P.Filesystem && P.Share) {
+      return P.Filesystem.writeFile({ path: name, data: text, directory: "CACHE", encoding: "utf8" }).then(function (w) {
+        return P.Share.share({ title: "Cadangan JobSearch", text: "Cadangan data JobSearch", url: w.uri, dialogTitle: "Simpan atau kirim cadangan" });
+      });
+    }
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    return Promise.resolve();
+  }
+  function restoreBackup(obj, replace) {
+    if (!obj || obj.app !== "jobsearch") return Promise.reject(new Error("Ini bukan berkas cadangan JobSearch"));
+    var json = { "Content-Type": "application/json" }, jobs = [];
+    if (obj.config && Array.isArray(obj.config.keywordGroups)) {
+      var cfg = Object.assign({}, obj.config);
+      if (!replace) { var have = {}; groupsList().forEach(function (g) { have[g.name] = 1; }); cfg.keywordGroups = groupsList().concat(obj.config.keywordGroups.filter(function (g) { return !have[g.name]; })); }
+      jobs.push(fetch("/api/config", { method: "POST", headers: json, body: JSON.stringify(cfg) }));
+    }
+    if (Array.isArray(obj.scraped)) jobs.push(fetch("/api/scraped/import", { method: "POST", headers: json, body: JSON.stringify({ rows: obj.scraped, replace: !!replace }) }));
+    if (Array.isArray(obj.tracker)) {
+      var cur = replace ? [] : data.slice();
+      var key = function (t) { return (t.company || "").toLowerCase() + "|" + (t.role || "").toLowerCase(); };
+      obj.tracker.forEach(function (t) { if (!cur.some(function (c) { return key(c) === key(t); })) cur.push(t); });
+      data.length = 0; cur.forEach(function (x) { data.push(x); }); save(data);
+    }
+    if (obj.prefs && obj.prefs.w) savePrefs(obj.prefs);
+    return Promise.all(jobs).then(function () { location.reload(); });
+  }
+  (function backupWiring() {
+    var exp = document.getElementById("backupExportBtn"), imp = document.getElementById("backupImportBtn"), file = document.getElementById("backupFile");
+    if (!exp) return;
+    function info() { var t = null; try { t = localStorage.getItem("jobsearch.lastBackup"); } catch (e) { /* ignore */ } if (t) document.getElementById("backupInfo").textContent = "Cadangan terakhir: " + new Date(t).toLocaleString() + ". Simpan berkasnya di tempat aman (Drive, WhatsApp, email)."; }
+    exp.addEventListener("click", function () {
+      exp.disabled = true;
+      buildBackup().then(function (b) { return deliverBackup("jobsearch-cadangan-" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(b)); })
+        .then(function () { try { localStorage.setItem("jobsearch.lastBackup", new Date().toISOString()); } catch (e) { /* ignore */ } info(); toast("Cadangan siap"); })
+        .catch(function (e) { if (!/cancel/i.test(String(e && e.message))) toast("Gagal: " + ((e && e.message) || e)); })
+        .then(function () { exp.disabled = false; });
+    });
+    imp.addEventListener("click", function () { file.value = ""; file.click(); });
+    file.addEventListener("change", function () {
+      var f = file.files && file.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () {
+        var obj; try { obj = JSON.parse(String(rd.result)); } catch (e) { toast("Berkas tidak bisa dibaca"); return; }
+        askChoice("Pulihkan cadangan?", (obj.scraped ? obj.scraped.length : 0) + " lowongan, " + (obj.tracker ? obj.tracker.length : 0) + " lamaran, dari " + (obj.exportedAt ? new Date(obj.exportedAt).toLocaleDateString() : "berkas ini") + ".", [
+          { label: "Gabungkan dengan data sekarang", value: "merge", primary: true }, { label: "Ganti semua data", value: "replace", danger: true }, { label: "Batal", value: null },
+        ]).then(function (v) { if (v) restoreBackup(obj, v === "replace").catch(function (e) { toast(e.message); }); });
+      };
+      rd.readAsText(f);
+    });
+    info();
+  })();
+
+  // ---- ranking settings + privacy sheet wiring ----
+  (function v4Wiring() {
+    ["fit", "elig", "fresh", "deadline", "learn"].forEach(function (k) {
+      var el = document.getElementById("rw_" + k); if (!el) return;
+      el.addEventListener("input", function () { el.nextElementSibling.textContent = el.value; });
+    });
+    var rp = document.getElementById("resetPrefsBtn"); if (rp) rp.addEventListener("click", function () { savePrefs({ w: {} }); toast("Pembelajaran selera direset"); renderScrapedTable(); });
+    var bd = document.getElementById("privacyBackdrop");
+    function openPrivacy() { bd.classList.add("open"); document.body.classList.add("sheet-open"); }
+    var po = document.getElementById("privacyOpenBtn"); if (po) po.addEventListener("click", openPrivacy);
+    var mp = document.getElementById("menuPrivacy"); if (mp) mp.addEventListener("click", openPrivacy);
+    document.getElementById("privacyClose").addEventListener("click", function () { bd.classList.remove("open"); document.body.classList.remove("sheet-open"); });
+    bd.addEventListener("click", function (e) { if (e.target === bd) { bd.classList.remove("open"); document.body.classList.remove("sheet-open"); } });
+    // tracker: pipeline chips + charts folded away
+    var pipe = document.getElementById("trackerPipe");
+    if (pipe) pipe.addEventListener("click", function (e) { var c = e.target.closest(".pipe-chip"); if (!c) return; trackerBucketFilter = c.getAttribute("data-b") || ""; trackerPage = 1; renderTable(); });
+    var panel = document.getElementById("tabPanelTracker"), sc = document.getElementById("statCards");
+    if (panel && sc && !document.getElementById("chartsFold")) {
+      var fold = document.createElement("details"); fold.className = "charts-fold"; fold.id = "chartsFold";
+      fold.innerHTML = "<summary>📊 Statistik &amp; grafik</summary>";
+      var anchor = panel.querySelector(".table-card");
+      [sc].concat([].slice.call(panel.querySelectorAll(".charts"))).forEach(function (n) { fold.appendChild(n); });
+      panel.insertBefore(fold, anchor);
+    }
+    var mk = document.getElementById("markReadBtn"); if (mk) mk.addEventListener("click", markNewRead);
+    groupSettings();
   })();
 
   // ---------- theme, bottom nav ----------

@@ -41,6 +41,8 @@
 - **Ramah pengguna baru:** aplikasi mulai kosong dengan tutorial interaktif 5 langkah (bergerak sendiri saat kamu selesai mengerjakan tiap langkah), input keyword berupa tag, mode gelap/terang. Buka lagi dari menu ⋯ → Panduan penggunaan.
 - **Mudah dibersihkan:** hapus lowongan satu per satu (dengan Urungkan), pilih banyak lalu hapus, hapus tab (beserta atau tanpa lowongannya), dan hapus semua data untuk mulai ulang.
 - **Hasil lebih bersih:** kata yang dikecualikan dan pencocokan jurusan menyaring lowongan tidak relevan dari MAGENTA/MagangHub. Data besar disimpan di IndexedDB, bukan localStorage.
+- **Peringkat pintar:** skor gabungan (skill, kelayakan mahasiswa, kebaruan, deadline, selera) dengan bobot yang bisa diatur, penggabungan duplikat lintas portal, dan pembelajaran dari lowongan yang kamu simpan atau hapus.
+- **Lamaran & cadangan:** tab Lamaran berupa kartu dengan chip status, plus cadangan/pemulihan satu berkas JSON (HP ↔ PC).
 - **Cepat:** semua portal dicari bersamaan dan detail dibaca paralel, jadi pencarian di HP jauh lebih singkat.
 - **Output CLI yang jelas:** banner, progres per portal, `[3/34]` saat membaca detail, ringkasan akhir, dan pesan error berbahasa Indonesia dengan saran.
 
@@ -149,6 +151,10 @@ Dokumentasi rinci setiap fitur (filter, deteksi kelayakan, WhatsApp, pembersihan
 - Data pribadi (`.env`, `job_scraper/`, CV/cover letter hasil, `documents/`) di-gitignore. Jalankan `tools\install_git_hooks.bat` sekali per clone: hook pre-commit memblokir commit yang berisi nomor HP/email aslimu.
 - Scraper hanya membaca halaman publik dengan jeda sopan. Fitur LinkedIn feed memakai cookie milikmu sendiri, bersifat opsional, dan melanggar ToS LinkedIn (risiko akun ada di kamu).
 - Nilai kecocokan hanyalah tumpang-tindih kata kunci, bukan penilaian nyata. Selalu baca postingnya.
+
+## Privasi
+
+Semua data tersimpan di perangkatmu; tidak ada akun, iklan, atau pelacak. Baca [PRIVACY.md](PRIVACY.md) (juga tersedia di dalam aplikasi: Setelan → Privasi).
 
 ## Kontribusi
 

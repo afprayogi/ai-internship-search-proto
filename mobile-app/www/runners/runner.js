@@ -678,9 +678,19 @@ addEventListener('checkNewJobs', function (resolve, reject, args) {
     });
     found = found.length ? found : (result.records || []);
 
+    // fill in requirements / deadline / eligibility for as many as fit in ~45s, 5 requests at a time
+    var t0 = Date.now(), next = 0, todo = found.filter(function (r) { return r.portal !== 'maganghub'; }).slice(0, 40);
+    async function worker() {
+      while (next < todo.length && Date.now() - t0 < 45000) {
+        var rec = todo[next++];
+        try { var patch = await ScraperLib.enrichRecord(rec, cfg); for (var k in patch) rec[k] = patch[k]; rec._enriched = true; } catch (e) { /* keep the basic record */ }
+      }
+    }
+    await Promise.all([worker(), worker(), worker(), worker(), worker()]);
+
     var added = kvGet('seenAdded', {});
     Object.keys(result.seenAdditions || {}).forEach(function (u) { added[u] = 1; seen[u] = 1; });
-    var pending = found.map(function (r) { r._pending = '1'; return r; }).concat(kvGet('pending', [])).slice(0, 300);
+    var pending = found.map(function (r) { r._pending = (r._enriched || r.portal === 'maganghub') ? '' : '1'; delete r._enriched; return r; }).concat(kvGet('pending', [])).slice(0, 300);
     kvSet('seenAdded', added); kvSet('seen', seen); kvSet('pending', pending);
     kvSet('lastRun', Date.now());
     kvSet('lastLog', lines.slice(-12).join('\n'));
@@ -688,7 +698,7 @@ addEventListener('checkNewJobs', function (resolve, reject, args) {
     if (found.length && cfg.notifyEnabled !== false) {
       CapacitorNotifications.schedule([{
         id: 4100, title: found.length + ' lowongan baru',
-        body: found.slice(0, 3).map(function (r) { return r.title + ' - ' + r.company; }).join('\n'),
+        body: (function () { var st = found.filter(function (r) { return r.eligibility === 'student_ok'; }).length; return (st ? st + ' cocok untuk mahasiswa\n' : '') + found.slice(0, 3).map(function (r) { return r.title + ' - ' + r.company; }).join('\n'); })(),
       }]);
     }
     resolve({ found: found.length });

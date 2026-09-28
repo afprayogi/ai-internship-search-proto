@@ -323,6 +323,14 @@ function deleteScrapedPostings({ urls, group }) {
   return { removed: records.length - kept.length, remaining: kept.length };
 }
 
+function importScrapedPostings({ rows, replace }) {
+  const existing = !replace && existsSync(SCRAPED_LOG_PATH) ? csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS) : [];
+  const have = new Set(existing.map((r) => r.url));
+  const added = (Array.isArray(rows) ? rows : []).filter((r) => r && r.url && !have.has(r.url));
+  writeFileSync(SCRAPED_LOG_PATH, recordsToCsv([...added, ...existing], SCRAPED_FIELDS), 'utf-8');
+  return { added: added.length, total: added.length + existing.length };
+}
+
 function cleanupExpiredPostings(maxAgeDays) {
   if (!existsSync(SCRAPED_LOG_PATH)) return { removed: 0, remaining: 0 };
   const records = csvToRecords(readFileSync(SCRAPED_LOG_PATH, 'utf-8'), SCRAPED_FIELDS);
@@ -407,6 +415,11 @@ const server = Bun.serve({
     if (url.pathname === '/api/scraped/clear' && req.method === 'POST') {
       return json(clearAllScrapedPostings());
     }
+    if (url.pathname === '/api/scraped/import' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      return json(importScrapedPostings({ rows: body.rows, replace: !!body.replace }));
+    }
+    if (url.pathname === '/api/scraped/mark-read' && req.method === 'POST') return json({ ok: true });
     if (url.pathname === '/api/scraped/delete' && req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       return json(deleteScrapedPostings({ urls: body.urls, group: typeof body.group === 'string' ? body.group : '' }));

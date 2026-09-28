@@ -218,10 +218,11 @@
       if (!res) return null;
       var have = {}; load(K.scraped, []).forEach(function (r) { have[r.url] = 1; });
       var fresh = (res.records || []).filter(function (r) { return r.url && !have[r.url]; });
+      fresh.forEach(function (r) { r._new = '1'; });
       if (fresh.length) store(K.scraped, fresh.concat(load(K.scraped, [])));
       var seen = load(K.seen, {}); Object.keys(res.seenAdded || {}).forEach(function (u) { seen[u] = { title: '', company: '', first_seen: '' }; }); store(K.seen, seen);
       if (res.lastRun) { store('sa.lastRun', Math.max(Number(load('sa.lastRun', 0)) || 0, res.lastRun)); store('sa.bgInfo', { lastRun: res.lastRun, lastLog: res.lastLog || '' }); }
-      if (fresh.length) window.dispatchEvent(new Event('sa:data'));
+      if (fresh.length) { window.dispatchEvent(new Event('sa:data')); setTimeout(function () { window.dispatchEvent(new CustomEvent('sa:new', { detail: { n: fresh.length } })); }, 200); }
       setTimeout(enrichPending, 400);
       return { fresh: fresh.length };
     }).catch(function () { return null; });
@@ -272,6 +273,18 @@
     if (path === '/api/tracker' && method === 'GET') return json(load(K.tracker, []));
     if (path === '/api/tracker' && method === 'POST') { var t = bodyOf(init); return json({ ok: true, rows: Array.isArray(t) ? t.length : 0 }); }
     if (path === '/api/scraped/clear' && method === 'POST') { var n = load(K.scraped, []).length; store(K.scraped, []); store(K.seen, {}); return json({ removed: n, remaining: 0 }); }
+    if (path === '/api/scraped/import' && method === 'POST') {
+      var ib = bodyOf(init), have = {}, cur = ib.replace ? [] : load(K.scraped, []);
+      cur.forEach(function (r) { have[r.url] = 1; });
+      var added = (ib.rows || []).filter(function (r) { return r && r.url && !have[r.url]; });
+      store(K.scraped, added.concat(cur));
+      var sn = load(K.seen, {}); added.forEach(function (r) { sn[r.url] = { title: r.title, company: r.company, first_seen: r.found_date || '' }; }); store(K.seen, sn);
+      return json({ added: added.length, total: added.length + cur.length });
+    }
+    if (path === '/api/scraped/mark-read' && method === 'POST') {
+      var all = load(K.scraped, []); all.forEach(function (r) { delete r._new; }); store(K.scraped, all);
+      return json({ ok: true });
+    }
     if (path === '/api/scraped/delete' && method === 'POST') {
       var db = bodyOf(init), urlSet = {}, before = load(K.scraped, []);
       (db.urls || []).forEach(function (u) { urlSet[u] = 1; });
