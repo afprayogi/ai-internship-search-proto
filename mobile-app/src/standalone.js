@@ -127,7 +127,7 @@
         store('sa.lastRun', Date.now());
         var n = records.length;
         if (n && getConfig().notifyEnabled !== false) {
-          notify(n + ' lowongan baru', records.slice(0, 3).map(function (x) { return x.title + ' - ' + x.company; }).join(String.fromCharCode(10)));
+          notify(n + ' lowongan baru', records.slice(0, 3).map(function (x) { return x.title + ' - ' + x.company; }).join(String.fromCharCode(10)), records[0] && records[0].url);
         }
         finish();
       },
@@ -145,13 +145,13 @@
     var p = LN(); if (!p) return;
     p.checkPermissions().then(function (r) { if (r.display !== 'granted') return p.requestPermissions(); }).catch(function () {});
   };
-  function notify(title, body) {
+  function notify(title, body, url) {
     var p = LN(); if (!p) return;
     p.checkPermissions().then(function (r) {
       return r.display === 'granted' ? r : p.requestPermissions();
     }).then(function (r) {
       if (!r || r.display !== 'granted') return;
-      return p.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 2147483000, title: title, body: body }] });
+      return p.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 2147483000, title: title, body: body, extra: url ? { url: url } : undefined }] });
     }).catch(function () {});
   }
   // Daily reminders at the scheduled times (repeat even while the app is closed).
@@ -201,6 +201,13 @@
       if (window.__hasLayers && window.__hasLayers()) history.back(); else App.exitApp();
     });
   });
+  window.addEventListener('load', function () {
+    var p = LN(); if (!p || !p.addListener) return;
+    p.addListener('localNotificationActionPerformed', function (e) {
+      var url = e && e.notification && e.notification.extra && e.notification.extra.url;
+      if (url) { try { localStorage.setItem('sa.openJobUrl', url); } catch (e2) { /* ignore */ } }
+    });
+  });
 
   // ---- background runner bridge ------------------------------------------------
   // The OS wakes a headless runner (runners/runner.js) every ~30 min; it runs the scraper when a search is due and posts
@@ -218,11 +225,12 @@
       if (!res) return null;
       var have = {}; load(K.scraped, []).forEach(function (r) { have[r.url] = 1; });
       var fresh = (res.records || []).filter(function (r) { return r.url && !have[r.url]; });
+      fresh.sort(function (a, b) { return (Number(b.fit_score) || 0) - (Number(a.fit_score) || 0); });
       fresh.forEach(function (r) { r._new = '1'; });
       if (fresh.length) store(K.scraped, fresh.concat(load(K.scraped, [])));
       var seen = load(K.seen, {}); Object.keys(res.seenAdded || {}).forEach(function (u) { seen[u] = { title: '', company: '', first_seen: '' }; }); store(K.seen, seen);
       if (res.lastRun) { store('sa.lastRun', Math.max(Number(load('sa.lastRun', 0)) || 0, res.lastRun)); store('sa.bgInfo', { lastRun: res.lastRun, lastLog: res.lastLog || '' }); }
-      if (fresh.length) { window.dispatchEvent(new Event('sa:data')); setTimeout(function () { window.dispatchEvent(new CustomEvent('sa:new', { detail: { n: fresh.length } })); }, 200); }
+      if (fresh.length) { window.dispatchEvent(new Event('sa:data')); setTimeout(function () { window.dispatchEvent(new CustomEvent('sa:new', { detail: { n: fresh.length, url: fresh[0].url } })); }, 200); }
       setTimeout(enrichPending, 400);
       return { fresh: fresh.length };
     }).catch(function () { return null; });

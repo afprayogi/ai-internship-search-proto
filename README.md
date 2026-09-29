@@ -41,6 +41,9 @@
 - **Ramah pengguna baru:** aplikasi mulai kosong dengan tutorial interaktif 5 langkah (bergerak sendiri saat kamu selesai mengerjakan tiap langkah), input keyword berupa tag, mode gelap/terang. Buka lagi dari menu ⋯ → Panduan penggunaan.
 - **Mudah dibersihkan:** hapus lowongan satu per satu (dengan Urungkan), pilih banyak lalu hapus, hapus tab (beserta atau tanpa lowongannya), dan hapus semua data untuk mulai ulang.
 - **Hasil lebih bersih:** kata yang dikecualikan dan pencocokan jurusan menyaring lowongan tidak relevan dari MAGENTA/MagangHub. Data besar disimpan di IndexedDB, bukan localStorage.
+- **Kenapa direkomendasikan:** buka lowongan mana pun untuk melihat rincian skornya (kecocokan skill, cocok mahasiswa, kebaruan, deadline, selera kamu) sebagai bar, bukan cuma angka.
+- **Notifikasi langsung ke lowongan:** ketuk notifikasi (atau buka aplikasi setelah pencarian latar belakang menemukan sesuatu) langsung membuka lowongan yang paling cocok, bukan cuma layar utama.
+- **Onboarding lebih cepat:** saat pertama pakai, isi kota dan jurusan sekali di Beranda supaya skor kecocokan langsung akurat.
 - **Peringkat pintar:** skor gabungan (skill, kelayakan mahasiswa, kebaruan, deadline, selera) dengan bobot yang bisa diatur, penggabungan duplikat lintas portal, dan pembelajaran dari lowongan yang kamu simpan atau hapus.
 - **Lamaran & cadangan:** tab Lamaran berupa kartu dengan chip status, plus cadangan/pemulihan satu berkas JSON (HP ↔ PC).
 - **Cepat:** semua portal dicari bersamaan dan detail dibaca paralel, jadi pencarian di HP jauh lebih singkat.

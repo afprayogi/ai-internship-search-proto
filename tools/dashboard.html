@@ -825,6 +825,15 @@
   .rw { display: grid; grid-template-columns: 1fr 120px 34px; gap: 10px; align-items: center; font-size: 13px; padding: 4px 0; } .rw input[type="range"] { width: 100%; accent-color: var(--brand2); } .rw b { text-align: right; }
   .policy h4 { margin: 16px 0 4px; } .policy p { margin: 0; line-height: 1.6; font-size: 14px; color: var(--text); }
   .dlg { max-height: 88vh; overflow: auto; }
+  .qs-fields { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .qs-fields input { flex: 1 1 140px; min-width: 0; font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); }
+  .qs-fields button { border-radius: 999px; padding: 9px 16px; }
+  .score-breakdown { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+  .sb-row { display: grid; grid-template-columns: 120px 1fr 30px; gap: 8px; align-items: center; font-size: 12.5px; color: var(--text-muted); }
+  .sb-bar { height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--text-muted) 16%, transparent); overflow: hidden; }
+  .sb-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--brand1), var(--brand2)); border-radius: 4px; }
+  .sb-row b { text-align: right; color: var(--text); }
+  .shimmer-line { height: 12px; margin: 6px 0; border-radius: 8px; background: linear-gradient(90deg, color-mix(in srgb, var(--text-muted) 12%, transparent) 25%, color-mix(in srgb, var(--text-muted) 24%, transparent) 50%, color-mix(in srgb, var(--text-muted) 12%, transparent) 75%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
 </style>
 </head>
 <body>
@@ -899,6 +908,11 @@
       <h3>Mulai dalam 10 detik ✨</h3>
       <p>Ketuk satu saran di bawah, atau tulis sendiri. Setelah itu tekan <b>Cari</b>.</p>
       <div class="suggest" id="suggestChips"></div>
+      <div class="qs-fields">
+        <input type="text" id="qsCity" placeholder="Kota kamu (opsional)">
+        <input type="text" id="qsMajor" placeholder="Jurusan kamu (opsional)">
+        <button type="button" id="qsSaveBtn">Simpan</button>
+      </div>
     </section>
 
     <section class="home-sec" id="secTop" hidden>
@@ -2158,6 +2172,7 @@
         rows.length + " lowongan tersimpan";
       populateScrapedFilterOptions();
       renderScrapedTable();
+      checkOpenTarget();
     }).catch(function () { /* server briefly unreachable - keep last known table */ });
   }
 
@@ -2712,8 +2727,11 @@
       row("Sumber", escapeHtml(PN[r.portal] || r.portal || "")) +
       row("Cara melamar", escapeHtml(r.apply_method || "")) +
       "</div>" +
-      (r.requirements ? '<h4>Syarat</h4><div class="d-text">' + escapeHtml(r.requirements) + "</div>" : "") +
-      (desc ? '<h4>Deskripsi</h4><div class="d-text">' + escapeHtml(desc) + "</div>" : "") +
+      "<h4>Kenapa direkomendasikan</h4><div class=\"score-breakdown\">" +
+      scoreBreakdown(r).map(function (p) { return '<div class="sb-row"><span>' + p.label + '</span><div class="sb-bar"><i style="width:' + p.pct + '%"></i></div><b>' + p.contrib + '</b></div>'; }).join("") +
+      "</div>" +
+      (r.requirements ? '<h4>Syarat</h4><div class="d-text">' + escapeHtml(r.requirements) + "</div>" : (r._pending ? '<h4>Syarat</h4><div class="shimmer-line" style="width:85%"></div><div class="shimmer-line" style="width:60%"></div>' : "")) +
+      (desc ? '<h4>Deskripsi</h4><div class="d-text">' + escapeHtml(desc) + "</div>" : (r._pending ? '<h4>Deskripsi</h4><div class="shimmer-line" style="width:95%"></div><div class="shimmer-line" style="width:90%"></div><div class="shimmer-line" style="width:70%"></div>' : "")) +
       "</div>" +
       '<div class="d-foot">' +
       (r.url ? '<a class="btn-link primary" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Buka lowongan ↗</a>' : "") +
@@ -3194,6 +3212,14 @@
     });
     $id("heroKeyword").addEventListener("click", function () { $id("scraperEditBtn").click(); });
     $id("suggestChips").addEventListener("click", function (e) { var b = e.target.closest(".sugg"); if (b) { b.classList.add("picked"); addSuggestedKeyword(b.getAttribute("data-kw")); } });
+    var qsSave = $id("qsSaveBtn");
+    if (qsSave) qsSave.addEventListener("click", function () {
+      var city = $id("qsCity").value.trim(), major = $id("qsMajor").value.trim();
+      if (!city && !major) return;
+      if (city && !(scraperConfig.idealLocations || []).some(function (x) { return x.toLowerCase() === city.toLowerCase(); })) scraperConfig.idealLocations = (scraperConfig.idealLocations || []).concat([city]);
+      if (major && !(scraperConfig.majors || []).some(function (x) { return x.toLowerCase() === major.toLowerCase(); })) scraperConfig.majors = (scraperConfig.majors || []).concat([major]);
+      saveScraperConfig(function () { toast("Tersimpan - dipakai untuk skor kecocokan"); $id("qsCity").value = ""; $id("qsMajor").value = ""; haptic(10); });
+    });
     $id("tabPanelHome").addEventListener("click", function (e) {
       var g = e.target.closest("[data-goto]"); if (g) { goto(g.getAttribute("data-goto")); return; }
       var c = e.target.closest("[data-url]"); if (!c) return;
@@ -3254,13 +3280,21 @@
     return { fit: num4(w.fit, 40), elig: num4(w.elig, 25), fresh: num4(w.fresh, 15), deadline: num4(w.deadline, 10), learn: num4(w.learn, 10) };
   }
   // 0-100 combined score: skill fit + student eligibility + freshness + deadline urgency + learned taste, weights from Settings.
-  function scoreOf(r) {
-    var W = rankWeights(), sum = W.fit + W.elig + W.fresh + W.deadline + W.learn; if (!sum) return 0;
+  function scoreParts(r) {
     var fit = Math.min(100, Number(r.fit_score) || 0) / 100;
     var elig = r.eligibility === "student_ok" ? 1 : r.eligibility === "unclear" ? 0.5 : r.eligibility === "graduate_required" ? 0 : 0.4;
     var t = Date.parse(r.posted_date || r.found_date), age = isNaN(t) ? 14 : Math.max(0, (Date.now() - t) / 86400000), fresh = Math.exp(-age / 14);
     var d = r.deadline_iso ? daysLeft(r.deadline_iso) : null, dl = d == null ? 0.4 : d < 0 ? 0 : d <= 3 ? 1 : d <= 14 ? 0.7 : 0.4;
-    return Math.round(100 * (W.fit * fit + W.elig * elig + W.fresh * fresh + W.deadline * dl + W.learn * learnScore(r)) / sum);
+    return { fit: fit, elig: elig, fresh: fresh, deadline: dl, learn: learnScore(r) };
+  }
+  function scoreOf(r) {
+    var W = rankWeights(), v = scoreParts(r), sum = W.fit + W.elig + W.fresh + W.deadline + W.learn; if (!sum) return 0;
+    return Math.round(100 * (W.fit * v.fit + W.elig * v.elig + W.fresh * v.fresh + W.deadline * v.deadline + W.learn * v.learn) / sum);
+  }
+  var SCORE_LABELS = [["fit", "Kecocokan skill"], ["elig", "Cocok mahasiswa"], ["fresh", "Kebaruan"], ["deadline", "Deadline mendesak"], ["learn", "Selera kamu"]];
+  function scoreBreakdown(r) {
+    var W = rankWeights(), v = scoreParts(r), sum = W.fit + W.elig + W.fresh + W.deadline + W.learn || 1;
+    return SCORE_LABELS.map(function (kv) { return { label: kv[1], pct: Math.round(v[kv[0]] * 100), contrib: Math.round(100 * W[kv[0]] * v[kv[0]] / sum) }; });
   }
 
   // Same job on several portals -> one card ("+2 portal lain"). Key = normalized company + order-free title words.
@@ -3306,7 +3340,19 @@
     newOnly = true; showTab("scraped");
     if (window.__syncChips) window.__syncChips();
     toast(((e.detail && e.detail.n) || "") + " lowongan baru dari pencarian otomatis 🎉");
+    var url = e.detail && e.detail.url;
+    if (url) setTimeout(function () { var row = scrapedData.filter(function (x) { return x.url === url; })[0]; if (row) showJobDetail(row); }, 600);
   });
+  // Tapping a notification (foreground run) stores the job url; open it as soon as that row exists.
+  function checkOpenTarget() {
+    var url = null; try { url = localStorage.getItem("sa.openJobUrl"); } catch (e) { /* ignore */ }
+    if (!url) return;
+    var row = scrapedData.filter(function (r) { return r.url === url; })[0];
+    if (!row) return;
+    try { localStorage.removeItem("sa.openJobUrl"); } catch (e) { /* ignore */ }
+    showTab("scraped");
+    setTimeout(function () { showJobDetail(row); }, 300);
+  }
 
   // ---- tracker: cards + status pipeline instead of a wide table ----
   var STATUS_LABEL = { applied: "Dilamar", interview: "Wawancara", interview_only: "Hanya wawancara", offer: "Penawaran", offer_declined: "Tawaran ditolak", hired: "Diterima", rejected: "Ditolak", no_response: "Tanpa kabar", withdrawn: "Ditarik" };
